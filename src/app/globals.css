@@ -1,26 +1,172 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  /* Colors - Light Mode */
+  --color-background: hsl(0 0% 100%);
+  --color-foreground: hsl(224 71.4% 4.1%);
+
+  --color-card: hsl(0 0% 100%);
+  --color-card-foreground: hsl(224 71.4% 4.1%);
+
+  --color-popover: hsl(0 0% 100%);
+  --color-popover-foreground: hsl(224 71.4% 4.1%);
+
+  --color-primary: hsl(220.9 39.3% 11%);
+  --color-primary-foreground: hsl(210 20% 98%);
+
+  --color-secondary: hsl(220 14.3% 95.9%);
+  --color-secondary-foreground: hsl(220.9 39.3% 11%);
+
+  --color-muted: hsl(220 14.3% 95.9%);
+  --color-muted-foreground: hsl(220 8.9% 46.1%);
+
+  --color-accent: hsl(220 14.3% 95.9%);
+  --color-accent-foreground: hsl(220.9 39.3% 11%);
+
+  --color-destructive: hsl(0 84.2% 60.2%);
+  --color-destructive-foreground: hsl(210 20% 98%);
+
+  --color-border: hsl(220 13% 91%);
+  --color-input: hsl(220 13% 91%);
+  --color-ring: hsl(224 71.4% 4.1%);
+
+  /* Chart colors */
+  --color-chart-1: hsl(12 76% 61%);
+  --color-chart-2: hsl(173 58% 39%);
+  --color-chart-3: hsl(197 37% 24%);
+  --color-chart-4: hsl(43 74% 66%);
+  --color-chart-5: hsl(27 87% 67%);
+
+  /* Status colors */
+  --color-success: hsl(142 76% 36%);
+  --color-success-foreground: hsl(0 0% 100%);
+  --color-warning: hsl(38 92% 50%);
+  --color-warning-foreground: hsl(0 0% 100%);
+  --color-info: hsl(199 89% 48%);
+  --color-info-foreground: hsl(0 0% 100%);
+
+  /* Lead status colors */
+  --color-status-new: hsl(199 89% 48%);
+  --color-status-contacted: hsl(280 65% 60%);
+  --color-status-qualified: hsl(38 92% 50%);
+  --color-status-quoted: hsl(173 58% 39%);
+  --color-status-negotiating: hsl(12 76% 61%);
+  --color-status-won: hsl(142 76% 36%);
+  --color-status-lost: hsl(0 84% 60%);
+
+  /* Radius */
+  --radius: 0.5rem;
+
+  /* Fonts */
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
 }
 
+/* Sidebar styles */
+@theme inline {
+  --color-sidebar-background: hsl(0 0% 100%);
+  --color-sidebar-foreground: hsl(240 5.3% 26.1%);
+  --color-sidebar-primary: hsl(240 5.9% 10%);
+  --color-sidebar-primary-foreground: hsl(0 0% 98%);
+  --color-sidebar-accent: hsl(240 4.8% 95.9%);
+  --color-sidebar-accent-foreground: hsl(240 5.9% 10%);
+  --color-sidebar-border: hsl(220 13% 91%);
+  --color-sidebar-ring: hsl(217.2 91.2% 59.8%);
+}
+
+/* Dark mode */
 @media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+  @theme inline {
+    --color-background: hsl(224 71.4% 4.1%);
+    --color-foreground: hsl(210 20% 98%);
+
+    --color-card: hsl(224 71.4% 4.1%);
+    --color-card-foreground: hsl(210 20% 98%);
+
+    --color-popover: hsl(224 71.4% 4.1%);
+    --color-popover-foreground: hsl(210 20% 98%);
+
+    --color-primary: hsl(210 20% 98%);
+    --color-primary-foreground: hsl(220.9 39.3% 11%);
+
+    --color-secondary: hsl(215 27.9% 16.9%);
+    --color-secondary-foreground: hsl(210 20% 98%);
+
+    --color-muted: hsl(215 27.9% 16.9%);
+    --color-muted-foreground: hsl(217.9 10.6% 64.9%);
+
+    --color-accent: hsl(215 27.9% 16.9%);
+    --color-accent-foreground: hsl(210 20% 98%);
+
+    --color-destructive: hsl(0 62.8% 30.6%);
+    --color-destructive-foreground: hsl(210 20% 98%);
+
+    --color-border: hsl(215 27.9% 16.9%);
+    --color-input: hsl(215 27.9% 16.9%);
+    --color-ring: hsl(216 12.2% 83.9%);
+
+    --color-sidebar-background: hsl(240 5.9% 10%);
+    --color-sidebar-foreground: hsl(240 4.8% 95.9%);
+    --color-sidebar-primary: hsl(224.3 76.3% 48%);
+    --color-sidebar-primary-foreground: hsl(0 0% 100%);
+    --color-sidebar-accent: hsl(240 3.7% 15.9%);
+    --color-sidebar-accent-foreground: hsl(240 4.8% 95.9%);
+    --color-sidebar-border: hsl(240 3.7% 15.9%);
+    --color-sidebar-ring: hsl(217.2 91.2% 59.8%);
   }
 }
 
+/* Base styles */
+* {
+  border-color: var(--color-border);
+}
+
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background-color: var(--color-background);
+  color: var(--color-foreground);
+  font-family: var(--font-sans);
+}
+
+/* Scrollbar styles */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: hsl(220 13% 80%);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(220 13% 70%);
+}
+
+/* Custom animations */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.2s ease-out;
+}
+
+.animate-slideIn {
+  animation: slideIn 0.2s ease-out;
 }

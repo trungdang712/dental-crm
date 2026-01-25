@@ -1,0 +1,213 @@
+'use client'
+
+import { useState, useEffect } from 'react'
+import Link from 'next/link'
+import { usePathname, useRouter } from 'next/navigation'
+import { useAuth } from '@/lib/auth'
+import { cn } from '@/lib/utils'
+import { Button } from '@/components/ui/button'
+import {
+  LayoutDashboard,
+  Users,
+  FileText,
+  BarChart3,
+  Settings,
+  LogOut,
+  ChevronDown,
+  Loader2,
+  Menu,
+  X
+} from 'lucide-react'
+
+interface NavItem {
+  href: string
+  label: string
+  icon: React.ElementType
+  badge?: number
+  badgeColor?: string
+}
+
+const navItems: NavItem[] = [
+  { href: '/dashboard', label: 'Tổng quan', icon: LayoutDashboard },
+  { href: '/leads', label: 'Khách hàng tiềm năng', icon: Users },
+  { href: '/reports', label: 'Báo cáo', icon: BarChart3 },
+  { href: '/settings', label: 'Cài đặt', icon: Settings },
+]
+
+export default function ProtectedLayout({
+  children,
+}: {
+  children: React.ReactNode
+}) {
+  const pathname = usePathname()
+  const router = useRouter()
+  const { user, profile, loading, signOut } = useAuth()
+  const [showUserMenu, setShowUserMenu] = useState(false)
+  const [sidebarOpen, setSidebarOpen] = useState(true)
+
+  // Redirect if not authenticated
+  useEffect(() => {
+    if (!loading && !user) {
+      router.push('/login')
+    }
+  }, [user, loading, router])
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    )
+  }
+
+  if (!user) {
+    return null
+  }
+
+  const handleSignOut = async () => {
+    await signOut()
+  }
+
+  return (
+    <div className="min-h-screen bg-background">
+      {/* Sidebar */}
+      <aside
+        className={cn(
+          "fixed left-0 top-0 z-40 h-screen bg-card border-r border-border transition-all duration-300",
+          sidebarOpen ? "w-64" : "w-16"
+        )}
+      >
+        {/* Logo */}
+        <div className="h-16 flex items-center justify-between px-4 border-b border-border">
+          {sidebarOpen && (
+            <Link href="/dashboard" className="flex items-center gap-2">
+              <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center">
+                <span className="text-primary-foreground font-bold text-lg">NK</span>
+              </div>
+              <div>
+                <h1 className="font-bold text-foreground">CRM Nha Khoa</h1>
+                <p className="text-xs text-muted-foreground">Quản lý Bán hàng</p>
+              </div>
+            </Link>
+          )}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            className="ml-auto"
+          >
+            {sidebarOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
+          </Button>
+        </div>
+
+        {/* Navigation */}
+        <nav className="flex-1 p-4">
+          <ul className="space-y-1">
+            {navItems.map((item) => {
+              const Icon = item.icon
+              const isActive = pathname === item.href || pathname.startsWith(item.href + '/')
+              return (
+                <li key={item.href}>
+                  <Link
+                    href={item.href}
+                    className={cn(
+                      "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors",
+                      isActive
+                        ? "bg-primary text-primary-foreground"
+                        : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                    )}
+                    title={!sidebarOpen ? item.label : undefined}
+                  >
+                    <Icon className="w-5 h-5 flex-shrink-0" />
+                    {sidebarOpen && (
+                      <>
+                        <span className="flex-1">{item.label}</span>
+                        {item.badge && (
+                          <span className={cn("text-xs font-bold px-2 py-0.5 rounded-full", item.badgeColor || "bg-primary")}>
+                            {item.badge}
+                          </span>
+                        )}
+                      </>
+                    )}
+                  </Link>
+                </li>
+              )
+            })}
+          </ul>
+        </nav>
+
+        {/* User Menu */}
+        {sidebarOpen && (
+          <div className="p-4 border-t border-border">
+            <div className="relative">
+              <button
+                onClick={() => setShowUserMenu(!showUserMenu)}
+                className="w-full flex items-center gap-3 px-3 py-2 hover:bg-accent rounded-lg transition-colors"
+              >
+                <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+                  <span className="text-primary text-sm font-semibold">
+                    {profile?.name?.charAt(0) || user.email?.charAt(0)?.toUpperCase() || 'U'}
+                  </span>
+                </div>
+                <div className="flex-1 min-w-0 text-left">
+                  <p className="text-sm font-medium text-foreground truncate">
+                    {profile?.name || user.email}
+                  </p>
+                  <div className="flex items-center gap-1">
+                    <span className={cn(
+                      "text-[10px] font-medium px-1.5 py-0.5 rounded",
+                      profile?.role === 'admin' ? 'bg-red-100 text-red-700' :
+                      profile?.role === 'manager' ? 'bg-blue-100 text-blue-700' :
+                      'bg-green-100 text-green-700'
+                    )}>
+                      {profile?.role === 'admin' ? 'Admin' :
+                       profile?.role === 'manager' ? 'Manager' : 'Sales'}
+                    </span>
+                  </div>
+                </div>
+                <ChevronDown className={cn(
+                  "w-4 h-4 text-muted-foreground transition-transform",
+                  showUserMenu && "rotate-180"
+                )} />
+              </button>
+
+              {/* Dropdown */}
+              {showUserMenu && (
+                <div className="absolute bottom-full left-0 right-0 mb-2 bg-card border border-border rounded-lg shadow-lg overflow-hidden">
+                  <Link
+                    href="/settings"
+                    onClick={() => setShowUserMenu(false)}
+                    className="flex items-center gap-3 px-4 py-3 hover:bg-accent transition-colors"
+                  >
+                    <Settings className="w-4 h-4 text-muted-foreground" />
+                    <span className="text-sm">Cài đặt</span>
+                  </Link>
+                  <button
+                    onClick={() => {
+                      setShowUserMenu(false)
+                      handleSignOut()
+                    }}
+                    className="w-full flex items-center gap-3 px-4 py-3 hover:bg-accent transition-colors border-t border-border"
+                  >
+                    <LogOut className="w-4 h-4 text-destructive" />
+                    <span className="text-sm text-destructive">Đăng xuất</span>
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </aside>
+
+      {/* Main Content */}
+      <main className={cn(
+        "min-h-screen transition-all duration-300",
+        sidebarOpen ? "ml-64" : "ml-16"
+      )}>
+        <div className="p-6">
+          {children}
+        </div>
+      </main>
+    </div>
+  )
+}
