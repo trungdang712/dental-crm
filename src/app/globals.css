@@ -89,47 +89,12 @@
   --color-sidebar-ring: hsl(217.2 91.2% 59.8%);
 }
 
-/* Dark mode */
+/* Dark mode disabled - Force light theme */
+/*
 @media (prefers-color-scheme: dark) {
-  @theme inline {
-    --color-background: hsl(224 71.4% 4.1%);
-    --color-foreground: hsl(210 20% 98%);
-
-    --color-card: hsl(224 71.4% 4.1%);
-    --color-card-foreground: hsl(210 20% 98%);
-
-    --color-popover: hsl(224 71.4% 4.1%);
-    --color-popover-foreground: hsl(210 20% 98%);
-
-    --color-primary: hsl(210 20% 98%);
-    --color-primary-foreground: hsl(220.9 39.3% 11%);
-
-    --color-secondary: hsl(215 27.9% 16.9%);
-    --color-secondary-foreground: hsl(210 20% 98%);
-
-    --color-muted: hsl(215 27.9% 16.9%);
-    --color-muted-foreground: hsl(217.9 10.6% 64.9%);
-
-    --color-accent: hsl(215 27.9% 16.9%);
-    --color-accent-foreground: hsl(210 20% 98%);
-
-    --color-destructive: hsl(0 62.8% 30.6%);
-    --color-destructive-foreground: hsl(210 20% 98%);
-
-    --color-border: hsl(215 27.9% 16.9%);
-    --color-input: hsl(215 27.9% 16.9%);
-    --color-ring: hsl(216 12.2% 83.9%);
-
-    --color-sidebar-background: hsl(240 5.9% 10%);
-    --color-sidebar-foreground: hsl(240 4.8% 95.9%);
-    --color-sidebar-primary: hsl(224.3 76.3% 48%);
-    --color-sidebar-primary-foreground: hsl(0 0% 100%);
-    --color-sidebar-accent: hsl(240 3.7% 15.9%);
-    --color-sidebar-accent-foreground: hsl(240 4.8% 95.9%);
-    --color-sidebar-border: hsl(240 3.7% 15.9%);
-    --color-sidebar-ring: hsl(217.2 91.2% 59.8%);
-  }
+  - disabled to force light theme
 }
+*/
 
 /* Base styles */
 * {

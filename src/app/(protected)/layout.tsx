@@ -73,7 +73,7 @@ export default function ProtectedLayout({
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-[#f1f5f9]">
       {/* Sidebar - Force light theme */}
       <aside
         className={cn(
