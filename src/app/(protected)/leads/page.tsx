@@ -360,8 +360,9 @@ export default function LeadsPage() {
         resetForm()
         toast.success('Đã thêm lead mới')
       } else {
-        const error = await response.json()
-        toast.error(error.message || 'Không thể thêm lead')
+        const errorData = await response.json()
+        console.error('API Error:', errorData)
+        toast.error(errorData.error || 'Không thể thêm lead')
       }
     } catch (error) {
       console.error('Error adding lead:', error)

@@ -27,11 +27,7 @@ export async function GET(request: NextRequest) {
     // Build query
     let query = supabase
       .from('crm_leads')
-      .select(`
-        *,
-        assigned_user:users!crm_leads_assigned_to_fkey(id, name, email, avatar_url),
-        creator:users!crm_leads_created_by_fkey(id, name, email)
-      `, { count: 'exact' })
+      .select('*', { count: 'exact' })
 
     // Apply filters
     if (status) {
@@ -116,11 +112,7 @@ export async function POST(request: NextRequest) {
         priority: body.priority || 'warm',
         created_by: user.id
       })
-      .select(`
-        *,
-        assigned_user:users!crm_leads_assigned_to_fkey(id, name, email, avatar_url),
-        creator:users!crm_leads_created_by_fkey(id, name, email)
-      `)
+      .select('*')
       .single()
 
     if (error) {
