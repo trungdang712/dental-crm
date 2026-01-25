@@ -74,23 +74,23 @@ export default function ProtectedLayout({
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Sidebar */}
+      {/* Sidebar - Force light theme */}
       <aside
         className={cn(
-          "fixed left-0 top-0 z-40 h-screen bg-card border-r border-border transition-all duration-300",
+          "fixed left-0 top-0 z-40 h-screen bg-[#f8fafc] border-r border-[#e2e8f0] transition-all duration-300",
           sidebarOpen ? "w-64" : "w-16"
         )}
       >
         {/* Logo */}
-        <div className="h-16 flex items-center justify-between px-4 border-b border-border">
+        <div className="h-16 flex items-center justify-between px-4 border-b border-[#e2e8f0]">
           {sidebarOpen && (
             <Link href="/dashboard" className="flex items-center gap-2">
-              <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center">
-                <span className="text-primary-foreground font-bold text-lg">NK</span>
+              <div className="w-10 h-10 bg-[#2563eb] rounded-lg flex items-center justify-center">
+                <span className="text-white font-bold text-lg">NK</span>
               </div>
               <div>
-                <h1 className="font-bold text-foreground">CRM Nha Khoa</h1>
-                <p className="text-xs text-muted-foreground">Quản lý Bán hàng</p>
+                <h1 className="font-bold text-[#1e293b]">CRM Nha Khoa</h1>
+                <p className="text-xs text-[#64748b]">Quản lý Bán hàng</p>
               </div>
             </Link>
           )}
@@ -115,7 +115,7 @@ export default function ProtectedLayout({
                 return (
                   <li key={item.label}>
                     <div
-                      className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-muted-foreground/50 cursor-not-allowed"
+                      className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-[#94a3b8] cursor-not-allowed"
                       title={!sidebarOpen ? item.label : undefined}
                     >
                       <Icon className="w-5 h-5 flex-shrink-0" />
@@ -141,8 +141,8 @@ export default function ProtectedLayout({
                     className={cn(
                       "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors",
                       isActive
-                        ? "bg-primary text-primary-foreground"
-                        : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                        ? "bg-[#2563eb] text-white"
+                        : "text-[#1e293b] hover:bg-[#f1f5f9]"
                     )}
                     title={!sidebarOpen ? item.label : undefined}
                   >
@@ -166,19 +166,19 @@ export default function ProtectedLayout({
 
         {/* User Menu */}
         {sidebarOpen && (
-          <div className="p-4 border-t border-border">
+          <div className="p-4 border-t border-[#e2e8f0]">
             <div className="relative">
               <button
                 onClick={() => setShowUserMenu(!showUserMenu)}
-                className="w-full flex items-center gap-3 px-3 py-2 hover:bg-accent rounded-lg transition-colors"
+                className="w-full flex items-center gap-3 px-3 py-2 hover:bg-[#f1f5f9] rounded-lg transition-colors"
               >
-                <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
-                  <span className="text-primary text-sm font-semibold">
+                <div className="w-8 h-8 rounded-full bg-[#dbeafe] flex items-center justify-center">
+                  <span className="text-[#2563eb] text-sm font-semibold">
                     {profile?.name?.charAt(0) || user.email?.charAt(0)?.toUpperCase() || 'U'}
                   </span>
                 </div>
                 <div className="flex-1 min-w-0 text-left">
-                  <p className="text-sm font-medium text-foreground truncate">
+                  <p className="text-sm font-medium text-[#1e293b] truncate">
                     {profile?.name || user.email}
                   </p>
                   <div className="flex items-center gap-1">
@@ -194,20 +194,20 @@ export default function ProtectedLayout({
                   </div>
                 </div>
                 <ChevronDown className={cn(
-                  "w-4 h-4 text-muted-foreground transition-transform",
+                  "w-4 h-4 text-[#64748b] transition-transform",
                   showUserMenu && "rotate-180"
                 )} />
               </button>
 
               {/* Dropdown */}
               {showUserMenu && (
-                <div className="absolute bottom-full left-0 right-0 mb-2 bg-card border border-border rounded-lg shadow-lg overflow-hidden">
+                <div className="absolute bottom-full left-0 right-0 mb-2 bg-white border border-[#e2e8f0] rounded-lg shadow-lg overflow-hidden z-50">
                   <Link
                     href="/settings"
                     onClick={() => setShowUserMenu(false)}
-                    className="flex items-center gap-3 px-4 py-3 hover:bg-accent transition-colors"
+                    className="flex items-center gap-3 px-4 py-3 hover:bg-[#f1f5f9] transition-colors text-[#1e293b]"
                   >
-                    <Settings className="w-4 h-4 text-muted-foreground" />
+                    <Settings className="w-4 h-4 text-[#64748b]" />
                     <span className="text-sm">Cài đặt</span>
                   </Link>
                   <button
@@ -215,10 +215,10 @@ export default function ProtectedLayout({
                       setShowUserMenu(false)
                       handleSignOut()
                     }}
-                    className="w-full flex items-center gap-3 px-4 py-3 hover:bg-accent transition-colors border-t border-border"
+                    className="w-full flex items-center gap-3 px-4 py-3 hover:bg-[#f1f5f9] transition-colors border-t border-[#e2e8f0]"
                   >
-                    <LogOut className="w-4 h-4 text-destructive" />
-                    <span className="text-sm text-destructive">Đăng xuất</span>
+                    <LogOut className="w-4 h-4 text-red-500" />
+                    <span className="text-sm text-red-500">Đăng xuất</span>
                   </button>
                 </div>
               )}
