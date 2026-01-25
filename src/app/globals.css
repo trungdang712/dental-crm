@@ -46,13 +46,28 @@
   --color-info-foreground: hsl(0 0% 100%);
 
   /* Lead status colors */
-  --color-status-new: hsl(199 89% 48%);
-  --color-status-contacted: hsl(280 65% 60%);
-  --color-status-qualified: hsl(38 92% 50%);
-  --color-status-quoted: hsl(173 58% 39%);
-  --color-status-negotiating: hsl(12 76% 61%);
-  --color-status-won: hsl(142 76% 36%);
-  --color-status-lost: hsl(0 84% 60%);
+  --color-status-new: #3b82f6;
+  --color-status-new-bg: #dbeafe;
+  --color-status-contacted: #8b5cf6;
+  --color-status-contacted-bg: #ede9fe;
+  --color-status-qualified: #06b6d4;
+  --color-status-qualified-bg: #cffafe;
+  --color-status-quoted: #f59e0b;
+  --color-status-quoted-bg: #fef3c7;
+  --color-status-negotiating: #f97316;
+  --color-status-negotiating-bg: #ffedd5;
+  --color-status-won: #10b981;
+  --color-status-won-bg: #d1fae5;
+  --color-status-lost: #6b7280;
+  --color-status-lost-bg: #f3f4f6;
+
+  /* Priority colors */
+  --color-priority-hot: #ef4444;
+  --color-priority-hot-bg: #fee2e2;
+  --color-priority-warm: #f97316;
+  --color-priority-warm-bg: #ffedd5;
+  --color-priority-cold: #3b82f6;
+  --color-priority-cold-bg: #dbeafe;
 
   /* Radius */
   --radius: 0.5rem;

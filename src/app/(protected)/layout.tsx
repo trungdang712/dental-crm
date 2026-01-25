@@ -16,7 +16,8 @@ import {
   ChevronDown,
   Loader2,
   Menu,
-  X
+  X,
+  MessageSquare
 } from 'lucide-react'
 
 interface NavItem {
@@ -25,11 +26,14 @@ interface NavItem {
   icon: React.ElementType
   badge?: number
   badgeColor?: string
+  disabled?: boolean
 }
 
 const navItems: NavItem[] = [
   { href: '/dashboard', label: 'Tổng quan', icon: LayoutDashboard },
-  { href: '/leads', label: 'Khách hàng tiềm năng', icon: Users },
+  { href: '#', label: 'Chat Inbox', icon: MessageSquare, badge: 3, badgeColor: 'bg-red-500 text-white', disabled: true },
+  { href: '/leads', label: 'Leads', icon: Users, badge: 12, badgeColor: 'bg-blue-500 text-white' },
+  { href: '#', label: 'Báo Giá', icon: FileText, badge: 5, badgeColor: 'bg-yellow-500 text-white', disabled: true },
   { href: '/reports', label: 'Báo cáo', icon: BarChart3 },
   { href: '/settings', label: 'Cài đặt', icon: Settings },
 ]
@@ -106,6 +110,30 @@ export default function ProtectedLayout({
             {navItems.map((item) => {
               const Icon = item.icon
               const isActive = pathname === item.href || pathname.startsWith(item.href + '/')
+
+              if (item.disabled) {
+                return (
+                  <li key={item.label}>
+                    <div
+                      className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-muted-foreground/50 cursor-not-allowed"
+                      title={!sidebarOpen ? item.label : undefined}
+                    >
+                      <Icon className="w-5 h-5 flex-shrink-0" />
+                      {sidebarOpen && (
+                        <>
+                          <span className="flex-1">{item.label}</span>
+                          {item.badge && (
+                            <span className={cn("text-xs font-bold px-2 py-0.5 rounded-full opacity-50", item.badgeColor || "bg-primary")}>
+                              {item.badge}
+                            </span>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  </li>
+                )
+              }
+
               return (
                 <li key={item.href}>
                   <Link

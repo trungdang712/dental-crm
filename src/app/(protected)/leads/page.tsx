@@ -40,7 +40,8 @@ import {
   Loader2,
   Kanban,
   List,
-  RefreshCw
+  RefreshCw,
+  MessageSquare
 } from 'lucide-react'
 import Link from 'next/link'
 import { toast } from 'sonner'
@@ -140,7 +141,7 @@ function LeadCard({ lead, onClick }: LeadCardProps) {
       {/* Value & Assigned */}
       <div className="flex items-center justify-between text-xs mb-2 pb-2 border-b border-border">
         {lead.estimated_value ? (
-          <div className="flex items-center gap-1 font-semibold text-foreground">
+          <div className="flex items-center gap-1 font-semibold text-green-600">
             <DollarSign className="w-3.5 h-3.5" />
             <span>${lead.estimated_value.toLocaleString()}</span>
           </div>
@@ -157,9 +158,25 @@ function LeadCard({ lead, onClick }: LeadCardProps) {
         )}
       </div>
 
+      {/* Quick Actions */}
+      <div className="grid grid-cols-4 gap-1 mb-2">
+        <Button size="sm" variant="ghost" className="h-7 px-1" title="Gọi điện" onClick={(e) => e.stopPropagation()}>
+          <Phone className="w-3 h-3" />
+        </Button>
+        <Button size="sm" variant="ghost" className="h-7 px-1" title="Email" onClick={(e) => e.stopPropagation()}>
+          <Mail className="w-3 h-3" />
+        </Button>
+        <Button size="sm" variant="ghost" className="h-7 px-1" title="Chat" onClick={(e) => e.stopPropagation()} disabled>
+          <MessageSquare className="w-3 h-3" />
+        </Button>
+        <Button size="sm" variant="ghost" className="h-7 px-1" title="Tạo báo giá" onClick={(e) => e.stopPropagation()}>
+          <FileText className="w-3 h-3" />
+        </Button>
+      </div>
+
       {/* Next Follow-up */}
       {lead.next_follow_up && (
-        <div className="flex items-center gap-1 text-xs text-muted-foreground">
+        <div className="flex items-center gap-1 text-xs text-muted-foreground pt-2 border-t border-border">
           <Calendar className="w-3 h-3 text-primary" />
           <span>
             {format(new Date(lead.next_follow_up), 'dd/MM HH:mm', { locale: vi })}
