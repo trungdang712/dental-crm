@@ -8,6 +8,7 @@ import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
+import { Checkbox } from '@/components/ui/checkbox'
 import {
   Dialog,
   DialogContent,
@@ -25,6 +26,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+} from '@/components/ui/dropdown-menu'
+import { CountrySelector } from '@/components/ui/country-selector'
+import { FileUpload } from '@/components/ui/file-upload'
+import { StaffMultiSelector } from '@/components/ui/staff-multi-selector'
 import {
   Search,
   Plus,
@@ -44,7 +55,14 @@ import {
   MessageSquare,
   ChevronLeft,
   Edit,
-  Trash2
+  Trash2,
+  Download,
+  Filter,
+  MoreHorizontal,
+  CheckSquare,
+  X,
+  UserPlus,
+  ArrowUpDown
 } from 'lucide-react'
 import Link from 'next/link'
 import { toast } from 'sonner'
@@ -372,13 +390,30 @@ export default function LeadsPage() {
   const [users, setUsers] = useState<UserType[]>([])
   const [expandedColumns, setExpandedColumns] = useState<Set<LeadStatus>>(new Set())
 
-  // Form state
+  // Bulk selection state
+  const [selectedLeadIds, setSelectedLeadIds] = useState<Set<string>>(new Set())
+  const [isBulkAssignModalOpen, setIsBulkAssignModalOpen] = useState(false)
+  const [bulkAssignees, setBulkAssignees] = useState<string[]>([])
+
+  // Advanced filter state
+  const [showFilters, setShowFilters] = useState(false)
+  const [filterStatus, setFilterStatus] = useState<LeadStatus | 'all'>('all')
+  const [filterPriority, setFilterPriority] = useState<LeadPriority | 'all'>('all')
+  const [filterSource, setFilterSource] = useState<LeadSource | 'all'>('all')
+  const [filterAssignee, setFilterAssignee] = useState<string>('all')
+
+  // Form state with new fields
   const [formData, setFormData] = useState({
     first_name: '',
     last_name: '',
     phone: '',
     email: '',
+    date_of_birth: '',
+    gender: '' as 'male' | 'female' | 'other' | '',
+    country: 'VN',
+    address: '',
     source: '' as LeadSource | '',
+    source_detail: '',
     interest: '',
     estimated_value: '',
     priority: 'warm' as LeadPriority,
@@ -386,15 +421,22 @@ export default function LeadsPage() {
     notes: '',
     next_follow_up: '',
   })
+  const [xrayFiles, setXrayFiles] = useState<File[]>([])
+  const [patientPhotos, setPatientPhotos] = useState<File[]>([])
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  // Edit form state
+  // Edit form state with new fields
   const [editFormData, setEditFormData] = useState({
     first_name: '',
     last_name: '',
     phone: '',
     email: '',
+    date_of_birth: '',
+    gender: '' as 'male' | 'female' | 'other' | '',
+    country: 'VN',
+    address: '',
     source: '' as LeadSource | '',
+    source_detail: '',
     interest: '',
     estimated_value: '',
     priority: 'warm' as LeadPriority,
@@ -511,7 +553,12 @@ export default function LeadsPage() {
       last_name: '',
       phone: '',
       email: '',
+      date_of_birth: '',
+      gender: '',
+      country: 'VN',
+      address: '',
       source: '',
+      source_detail: '',
       interest: '',
       estimated_value: '',
       priority: 'warm',
@@ -519,6 +566,8 @@ export default function LeadsPage() {
       notes: '',
       next_follow_up: '',
     })
+    setXrayFiles([])
+    setPatientPhotos([])
   }
 
   const openEditModal = (lead: Lead) => {
@@ -528,7 +577,12 @@ export default function LeadsPage() {
       last_name: lead.last_name,
       phone: lead.phone,
       email: lead.email || '',
+      date_of_birth: lead.date_of_birth || '',
+      gender: lead.gender || '',
+      country: lead.country || 'VN',
+      address: lead.address || '',
       source: lead.source || '',
+      source_detail: lead.source_detail || '',
       interest: lead.interest || '',
       estimated_value: lead.estimated_value?.toString() || '',
       priority: lead.priority,
@@ -602,13 +656,184 @@ export default function LeadsPage() {
     }
   }
 
-  const filteredLeads = leads.filter(
-    (lead) =>
+  // Bulk selection handlers
+  const toggleLeadSelection = (leadId: string) => {
+    setSelectedLeadIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(leadId)) {
+        next.delete(leadId)
+      } else {
+        next.add(leadId)
+      }
+      return next
+    })
+  }
+
+  const toggleSelectAll = () => {
+    if (selectedLeadIds.size === filteredLeads.length) {
+      setSelectedLeadIds(new Set())
+    } else {
+      setSelectedLeadIds(new Set(filteredLeads.map((l) => l.id)))
+    }
+  }
+
+  const clearSelection = () => {
+    setSelectedLeadIds(new Set())
+  }
+
+  // Bulk operations
+  const handleBulkDelete = async () => {
+    if (!confirm(`Bạn có chắc muốn xóa ${selectedLeadIds.size} lead đã chọn?`)) return
+
+    try {
+      const deletePromises = Array.from(selectedLeadIds).map((id) =>
+        fetch(`/api/leads/${id}`, { method: 'DELETE' })
+      )
+      await Promise.all(deletePromises)
+      setLeads((prev) => prev.filter((lead) => !selectedLeadIds.has(lead.id)))
+      clearSelection()
+      toast.success(`Đã xóa ${selectedLeadIds.size} lead`)
+    } catch (error) {
+      console.error('Error bulk deleting:', error)
+      toast.error('Đã xảy ra lỗi khi xóa')
+    }
+  }
+
+  const handleBulkStatusChange = async (newStatus: LeadStatus) => {
+    try {
+      const updatePromises = Array.from(selectedLeadIds).map((id) =>
+        fetch(`/api/leads/${id}/status`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: newStatus }),
+        })
+      )
+      const results = await Promise.all(updatePromises)
+      const updatedLeads = await Promise.all(results.map((r) => r.json()))
+
+      setLeads((prev) =>
+        prev.map((lead) => {
+          const updated = updatedLeads.find((u) => u.data?.id === lead.id)
+          return updated?.data || lead
+        })
+      )
+      clearSelection()
+      toast.success(`Đã cập nhật trạng thái ${selectedLeadIds.size} lead`)
+    } catch (error) {
+      console.error('Error bulk status change:', error)
+      toast.error('Đã xảy ra lỗi')
+    }
+  }
+
+  const handleBulkAssign = async () => {
+    if (bulkAssignees.length === 0) {
+      toast.error('Vui lòng chọn ít nhất một nhân viên')
+      return
+    }
+
+    try {
+      // Assign the first selected user (or could implement round-robin)
+      const assigneeId = bulkAssignees[0]
+      const updatePromises = Array.from(selectedLeadIds).map((id) =>
+        fetch(`/api/leads/${id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ assigned_to: assigneeId }),
+        })
+      )
+      await Promise.all(updatePromises)
+
+      // Refresh leads
+      fetchLeads()
+      clearSelection()
+      setIsBulkAssignModalOpen(false)
+      setBulkAssignees([])
+      toast.success(`Đã phân công ${selectedLeadIds.size} lead`)
+    } catch (error) {
+      console.error('Error bulk assign:', error)
+      toast.error('Đã xảy ra lỗi')
+    }
+  }
+
+  // Export functionality
+  const exportToCSV = () => {
+    const headers = [
+      'Họ',
+      'Tên',
+      'SĐT',
+      'Email',
+      'Ngày sinh',
+      'Giới tính',
+      'Quốc gia',
+      'Địa chỉ',
+      'Nguồn',
+      'Chi tiết nguồn',
+      'Dịch vụ quan tâm',
+      'Giá trị ước tính',
+      'Mức độ ưu tiên',
+      'Trạng thái',
+      'Người phụ trách',
+      'Ghi chú',
+      'Ngày tạo',
+    ]
+
+    const rows = filteredLeads.map((lead) => [
+      lead.first_name,
+      lead.last_name,
+      lead.phone,
+      lead.email || '',
+      lead.date_of_birth || '',
+      lead.gender === 'male' ? 'Nam' : lead.gender === 'female' ? 'Nữ' : lead.gender || '',
+      lead.country || '',
+      lead.address || '',
+      lead.source || '',
+      lead.source_detail || '',
+      lead.interest || '',
+      lead.estimated_value?.toString() || '',
+      lead.priority === 'hot' ? 'Nóng' : lead.priority === 'warm' ? 'Ấm' : 'Lạnh',
+      statusColumns.find((c) => c.status === lead.status)?.label || lead.status,
+      lead.assigned_user?.name || lead.assigned_user?.email || '',
+      lead.notes || '',
+      format(new Date(lead.created_at), 'dd/MM/yyyy HH:mm'),
+    ])
+
+    const csvContent = [
+      headers.join(','),
+      ...rows.map((row) =>
+        row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(',')
+      ),
+    ].join('\n')
+
+    const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' })
+    const link = document.createElement('a')
+    link.href = URL.createObjectURL(blob)
+    link.download = `leads_${format(new Date(), 'yyyyMMdd_HHmmss')}.csv`
+    link.click()
+    toast.success('Đã xuất file CSV')
+  }
+
+  const filteredLeads = leads.filter((lead) => {
+    // Search filter
+    const matchesSearch =
       lead.first_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       lead.last_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       lead.phone.includes(searchQuery) ||
       (lead.interest?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false)
-  )
+
+    // Status filter
+    const matchesStatus = filterStatus === 'all' || lead.status === filterStatus
+
+    // Priority filter
+    const matchesPriority = filterPriority === 'all' || lead.priority === filterPriority
+
+    // Source filter
+    const matchesSource = filterSource === 'all' || lead.source === filterSource
+
+    // Assignee filter
+    const matchesAssignee = filterAssignee === 'all' || lead.assigned_to === filterAssignee
+
+    return matchesSearch && matchesStatus && matchesPriority && matchesSource && matchesAssignee
+  })
 
   const getStatusBadge = (status: LeadStatus) => {
     const column = statusColumns.find((c) => c.status === status)
@@ -637,12 +862,16 @@ export default function LeadsPage() {
               Khách Hàng Tiềm Năng
             </h1>
             <p className="text-muted-foreground">
-              Quản lý và theo dõi khách hàng tiềm năng
+              Quản lý và theo dõi khách hàng tiềm năng ({filteredLeads.length} lead)
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="icon" onClick={fetchLeads}>
+            <Button variant="outline" size="icon" onClick={fetchLeads} title="Làm mới">
               <RefreshCw className="w-4 h-4" />
+            </Button>
+            <Button variant="outline" onClick={exportToCSV} title="Xuất CSV">
+              <Download className="w-4 h-4 mr-2" />
+              Xuất
             </Button>
             <Button onClick={() => setIsAddModalOpen(true)}>
               <Plus className="w-4 h-4 mr-2" />
@@ -651,10 +880,68 @@ export default function LeadsPage() {
           </div>
         </div>
 
+        {/* Bulk Actions Bar */}
+        {selectedLeadIds.size > 0 && (
+          <Card className="p-3 bg-primary/5 border-primary/20">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Badge variant="secondary" className="text-sm">
+                  {selectedLeadIds.size} đã chọn
+                </Badge>
+                <Button variant="ghost" size="sm" onClick={clearSelection}>
+                  <X className="w-4 h-4 mr-1" />
+                  Bỏ chọn
+                </Button>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIsBulkAssignModalOpen(true)}
+                >
+                  <UserPlus className="w-4 h-4 mr-1" />
+                  Phân công
+                </Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="sm">
+                      <ArrowUpDown className="w-4 h-4 mr-1" />
+                      Đổi trạng thái
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent>
+                    {statusColumns.map((col) => (
+                      <DropdownMenuItem
+                        key={col.status}
+                        onClick={() => handleBulkStatusChange(col.status)}
+                      >
+                        <div
+                          className="w-2 h-2 rounded-full mr-2"
+                          style={{ backgroundColor: col.color }}
+                        />
+                        {col.label}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="text-destructive hover:text-destructive"
+                  onClick={handleBulkDelete}
+                >
+                  <Trash2 className="w-4 h-4 mr-1" />
+                  Xóa
+                </Button>
+              </div>
+            </div>
+          </Card>
+        )}
+
         {/* Filters */}
         <Card className="p-4">
-          <div className="flex items-center gap-4">
-            <div className="flex-1 relative">
+          <div className="flex items-center gap-4 flex-wrap">
+            <div className="flex-1 min-w-[200px] relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
                 type="text"
@@ -664,6 +951,19 @@ export default function LeadsPage() {
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
             </div>
+            <Button
+              variant={showFilters ? 'secondary' : 'outline'}
+              size="sm"
+              onClick={() => setShowFilters(!showFilters)}
+            >
+              <Filter className="w-4 h-4 mr-1" />
+              Bộ lọc
+              {(filterStatus !== 'all' || filterPriority !== 'all' || filterSource !== 'all' || filterAssignee !== 'all') && (
+                <Badge className="ml-1 h-5 w-5 p-0 justify-center">
+                  {[filterStatus, filterPriority, filterSource, filterAssignee].filter(f => f !== 'all').length}
+                </Badge>
+              )}
+            </Button>
             <div className="flex items-center gap-1 border rounded-lg p-1">
               <Button
                 variant={viewMode === 'pipeline' ? 'default' : 'ghost'}
@@ -681,6 +981,75 @@ export default function LeadsPage() {
               </Button>
             </div>
           </div>
+
+          {/* Advanced Filters */}
+          {showFilters && (
+            <div className="mt-4 pt-4 border-t grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="space-y-1">
+                <Label className="text-xs">Trạng thái</Label>
+                <Select value={filterStatus} onValueChange={(v) => setFilterStatus(v as LeadStatus | 'all')}>
+                  <SelectTrigger className="h-9">
+                    <SelectValue placeholder="Tất cả" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Tất cả</SelectItem>
+                    {statusColumns.map((col) => (
+                      <SelectItem key={col.status} value={col.status}>
+                        {col.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Mức độ ưu tiên</Label>
+                <Select value={filterPriority} onValueChange={(v) => setFilterPriority(v as LeadPriority | 'all')}>
+                  <SelectTrigger className="h-9">
+                    <SelectValue placeholder="Tất cả" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Tất cả</SelectItem>
+                    <SelectItem value="hot">Nóng</SelectItem>
+                    <SelectItem value="warm">Ấm</SelectItem>
+                    <SelectItem value="cold">Lạnh</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Nguồn</Label>
+                <Select value={filterSource} onValueChange={(v) => setFilterSource(v as LeadSource | 'all')}>
+                  <SelectTrigger className="h-9">
+                    <SelectValue placeholder="Tất cả" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Tất cả</SelectItem>
+                    <SelectItem value="facebook">Facebook</SelectItem>
+                    <SelectItem value="google">Google</SelectItem>
+                    <SelectItem value="referral">Giới thiệu</SelectItem>
+                    <SelectItem value="walkin">Khách vãng lai</SelectItem>
+                    <SelectItem value="website">Website</SelectItem>
+                    <SelectItem value="chat">Chat</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Người phụ trách</Label>
+                <Select value={filterAssignee} onValueChange={setFilterAssignee}>
+                  <SelectTrigger className="h-9">
+                    <SelectValue placeholder="Tất cả" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Tất cả</SelectItem>
+                    {users.map((user) => (
+                      <SelectItem key={user.id} value={user.id}>
+                        {user.name || user.email}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          )}
         </Card>
 
         {/* Pipeline View */}
@@ -734,6 +1103,12 @@ export default function LeadsPage() {
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-border">
+                    <th className="w-12 p-4">
+                      <Checkbox
+                        checked={selectedLeadIds.size === filteredLeads.length && filteredLeads.length > 0}
+                        onCheckedChange={toggleSelectAll}
+                      />
+                    </th>
                     <th className="text-left p-4 font-medium text-muted-foreground">
                       Tên
                     </th>
@@ -755,16 +1130,24 @@ export default function LeadsPage() {
                     <th className="text-left p-4 font-medium text-muted-foreground">
                       Ngày tạo
                     </th>
+                    <th className="w-12 p-4"></th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredLeads.map((lead) => (
                     <tr
                       key={lead.id}
-                      className="border-b border-border hover:bg-muted/50 cursor-pointer"
-                      onClick={() => setSelectedLead(lead)}
+                      className={`border-b border-border hover:bg-muted/50 cursor-pointer ${
+                        selectedLeadIds.has(lead.id) ? 'bg-primary/5' : ''
+                      }`}
                     >
-                      <td className="p-4">
+                      <td className="p-4" onClick={(e) => e.stopPropagation()}>
+                        <Checkbox
+                          checked={selectedLeadIds.has(lead.id)}
+                          onCheckedChange={() => toggleLeadSelection(lead.id)}
+                        />
+                      </td>
+                      <td className="p-4" onClick={() => setSelectedLead(lead)}>
                         <div className="flex items-center gap-2">
                           {lead.priority === 'hot' && (
                             <Flame className="w-4 h-4 text-red-500" />
@@ -780,23 +1163,49 @@ export default function LeadsPage() {
                           </span>
                         </div>
                       </td>
-                      <td className="p-4">{lead.phone}</td>
-                      <td className="p-4 text-muted-foreground">
+                      <td className="p-4" onClick={() => setSelectedLead(lead)}>{lead.phone}</td>
+                      <td className="p-4 text-muted-foreground" onClick={() => setSelectedLead(lead)}>
                         {lead.interest || '-'}
                       </td>
-                      <td className="p-4">
+                      <td className="p-4" onClick={() => setSelectedLead(lead)}>
                         {lead.estimated_value
                           ? `$${lead.estimated_value.toLocaleString()}`
                           : '-'}
                       </td>
-                      <td className="p-4">{getStatusBadge(lead.status)}</td>
-                      <td className="p-4 text-muted-foreground">
+                      <td className="p-4" onClick={() => setSelectedLead(lead)}>{getStatusBadge(lead.status)}</td>
+                      <td className="p-4 text-muted-foreground" onClick={() => setSelectedLead(lead)}>
                         {lead.assigned_user?.name || '-'}
                       </td>
-                      <td className="p-4 text-muted-foreground">
+                      <td className="p-4 text-muted-foreground" onClick={() => setSelectedLead(lead)}>
                         {format(new Date(lead.created_at), 'dd/MM/yyyy', {
                           locale: vi,
                         })}
+                      </td>
+                      <td className="p-4" onClick={(e) => e.stopPropagation()}>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-8 w-8">
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => setSelectedLead(lead)}>
+                              Xem chi tiết
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => openEditModal(lead)}>
+                              <Edit className="w-4 h-4 mr-2" />
+                              Chỉnh sửa
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              className="text-destructive"
+                              onClick={() => handleDeleteLead(lead.id)}
+                            >
+                              <Trash2 className="w-4 h-4 mr-2" />
+                              Xóa
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </td>
                     </tr>
                   ))}
@@ -898,181 +1307,284 @@ export default function LeadsPage() {
 
         {/* Add Lead Modal */}
         <Dialog open={isAddModalOpen} onOpenChange={setIsAddModalOpen}>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Thêm Khách Hàng Tiềm Năng</DialogTitle>
               <DialogDescription>
                 Điền thông tin khách hàng. Các trường * là bắt buộc.
               </DialogDescription>
             </DialogHeader>
-            <form onSubmit={handleAddLead} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+            <form onSubmit={handleAddLead} className="space-y-6">
+              {/* Personal Information Section */}
+              <div className="space-y-4">
+                <h3 className="font-medium text-sm text-muted-foreground border-b pb-2">Thông tin cá nhân</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="first_name">
+                      Họ <span className="text-destructive">*</span>
+                    </Label>
+                    <Input
+                      id="first_name"
+                      value={formData.first_name}
+                      onChange={(e) =>
+                        setFormData({ ...formData, first_name: e.target.value })
+                      }
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="last_name">
+                      Tên <span className="text-destructive">*</span>
+                    </Label>
+                    <Input
+                      id="last_name"
+                      value={formData.last_name}
+                      onChange={(e) =>
+                        setFormData({ ...formData, last_name: e.target.value })
+                      }
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="phone">
+                      SĐT <span className="text-destructive">*</span>
+                    </Label>
+                    <Input
+                      id="phone"
+                      type="tel"
+                      value={formData.phone}
+                      onChange={(e) =>
+                        setFormData({ ...formData, phone: e.target.value })
+                      }
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="email">Email</Label>
+                    <Input
+                      id="email"
+                      type="email"
+                      value={formData.email}
+                      onChange={(e) =>
+                        setFormData({ ...formData, email: e.target.value })
+                      }
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="date_of_birth">Ngày sinh</Label>
+                    <Input
+                      id="date_of_birth"
+                      type="date"
+                      value={formData.date_of_birth}
+                      onChange={(e) =>
+                        setFormData({ ...formData, date_of_birth: e.target.value })
+                      }
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="gender">Giới tính</Label>
+                    <Select
+                      value={formData.gender}
+                      onValueChange={(value) =>
+                        setFormData({ ...formData, gender: value as 'male' | 'female' | 'other' })
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Chọn" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="male">Nam</SelectItem>
+                        <SelectItem value="female">Nữ</SelectItem>
+                        <SelectItem value="other">Khác</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2 col-span-2">
+                    <Label htmlFor="country">Quốc gia</Label>
+                    <CountrySelector
+                      value={formData.country}
+                      onChange={(value) => setFormData({ ...formData, country: value })}
+                    />
+                  </div>
+                </div>
+
                 <div className="space-y-2">
-                  <Label htmlFor="first_name">
-                    Họ <span className="text-destructive">*</span>
-                  </Label>
+                  <Label htmlFor="address">Địa chỉ</Label>
                   <Input
-                    id="first_name"
-                    value={formData.first_name}
+                    id="address"
+                    value={formData.address}
                     onChange={(e) =>
-                      setFormData({ ...formData, first_name: e.target.value })
+                      setFormData({ ...formData, address: e.target.value })
                     }
-                    required
+                    placeholder="Số nhà, đường, quận/huyện, thành phố"
                   />
                 </div>
+              </div>
+
+              {/* Lead Information Section */}
+              <div className="space-y-4">
+                <h3 className="font-medium text-sm text-muted-foreground border-b pb-2">Thông tin lead</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="source">Nguồn</Label>
+                    <Select
+                      value={formData.source}
+                      onValueChange={(value) =>
+                        setFormData({ ...formData, source: value as LeadSource })
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Chọn nguồn" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="facebook">Facebook</SelectItem>
+                        <SelectItem value="google">Google</SelectItem>
+                        <SelectItem value="referral">Giới thiệu</SelectItem>
+                        <SelectItem value="walkin">Khách vãng lai</SelectItem>
+                        <SelectItem value="website">Website</SelectItem>
+                        <SelectItem value="chat">Chat</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="source_detail">Chi tiết nguồn</Label>
+                    <Input
+                      id="source_detail"
+                      value={formData.source_detail}
+                      onChange={(e) =>
+                        setFormData({ ...formData, source_detail: e.target.value })
+                      }
+                      placeholder="VD: FB Ads Campaign A, Google Search..."
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="priority">Mức độ ưu tiên</Label>
+                    <Select
+                      value={formData.priority}
+                      onValueChange={(value) =>
+                        setFormData({ ...formData, priority: value as LeadPriority })
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="hot">Nóng</SelectItem>
+                        <SelectItem value="warm">Ấm</SelectItem>
+                        <SelectItem value="cold">Lạnh</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="interest">Dịch vụ quan tâm</Label>
+                    <Input
+                      id="interest"
+                      value={formData.interest}
+                      onChange={(e) =>
+                        setFormData({ ...formData, interest: e.target.value })
+                      }
+                      placeholder="VD: Implant, Niềng răng..."
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="estimated_value">Giá trị ước tính ($)</Label>
+                    <Input
+                      id="estimated_value"
+                      type="number"
+                      value={formData.estimated_value}
+                      onChange={(e) =>
+                        setFormData({ ...formData, estimated_value: e.target.value })
+                      }
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="assigned_to">Phân công cho</Label>
+                    <Select
+                      value={formData.assigned_to}
+                      onValueChange={(value) =>
+                        setFormData({ ...formData, assigned_to: value })
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Chọn nhân viên" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {users.map((user) => (
+                          <SelectItem key={user.id} value={user.id}>
+                            {user.name || user.email}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
                 <div className="space-y-2">
-                  <Label htmlFor="last_name">
-                    Tên <span className="text-destructive">*</span>
-                  </Label>
+                  <Label htmlFor="next_follow_up">Lịch follow-up</Label>
                   <Input
-                    id="last_name"
-                    value={formData.last_name}
+                    id="next_follow_up"
+                    type="datetime-local"
+                    value={formData.next_follow_up}
                     onChange={(e) =>
-                      setFormData({ ...formData, last_name: e.target.value })
+                      setFormData({ ...formData, next_follow_up: e.target.value })
                     }
-                    required
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="notes">Ghi chú</Label>
+                  <Textarea
+                    id="notes"
+                    value={formData.notes}
+                    onChange={(e) =>
+                      setFormData({ ...formData, notes: e.target.value })
+                    }
+                    rows={3}
                   />
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="phone">
-                    SĐT <span className="text-destructive">*</span>
-                  </Label>
-                  <Input
-                    id="phone"
-                    type="tel"
-                    value={formData.phone}
-                    onChange={(e) =>
-                      setFormData({ ...formData, phone: e.target.value })
-                    }
-                    required
-                  />
+              {/* File Uploads Section */}
+              <div className="space-y-4">
+                <h3 className="font-medium text-sm text-muted-foreground border-b pb-2">Tệp đính kèm</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Ảnh X-Ray</Label>
+                    <FileUpload
+                      value={xrayFiles}
+                      onChange={setXrayFiles}
+                      accept="image/*"
+                      maxFiles={5}
+                      maxSize={10}
+                      label="Tải ảnh X-Ray"
+                      description="Ảnh X-Ray răng, hàm"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Ảnh bệnh nhân</Label>
+                    <FileUpload
+                      value={patientPhotos}
+                      onChange={setPatientPhotos}
+                      accept="image/*"
+                      maxFiles={5}
+                      maxSize={10}
+                      label="Tải ảnh bệnh nhân"
+                      description="Ảnh khuôn mặt, răng"
+                    />
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    value={formData.email}
-                    onChange={(e) =>
-                      setFormData({ ...formData, email: e.target.value })
-                    }
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="source">Nguồn</Label>
-                  <Select
-                    value={formData.source}
-                    onValueChange={(value) =>
-                      setFormData({ ...formData, source: value as LeadSource })
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Chọn nguồn" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="facebook">Facebook</SelectItem>
-                      <SelectItem value="google">Google</SelectItem>
-                      <SelectItem value="referral">Giới thiệu</SelectItem>
-                      <SelectItem value="walkin">Khách vãng lai</SelectItem>
-                      <SelectItem value="website">Website</SelectItem>
-                      <SelectItem value="chat">Chat</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="priority">Mức độ ưu tiên</Label>
-                  <Select
-                    value={formData.priority}
-                    onValueChange={(value) =>
-                      setFormData({ ...formData, priority: value as LeadPriority })
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="hot">Nóng</SelectItem>
-                      <SelectItem value="warm">Ấm</SelectItem>
-                      <SelectItem value="cold">Lạnh</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="interest">Dịch vụ quan tâm</Label>
-                <Input
-                  id="interest"
-                  value={formData.interest}
-                  onChange={(e) =>
-                    setFormData({ ...formData, interest: e.target.value })
-                  }
-                  placeholder="VD: Implant, Niềng răng..."
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="estimated_value">Giá trị ước tính ($)</Label>
-                  <Input
-                    id="estimated_value"
-                    type="number"
-                    value={formData.estimated_value}
-                    onChange={(e) =>
-                      setFormData({ ...formData, estimated_value: e.target.value })
-                    }
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="assigned_to">Phân công cho</Label>
-                  <Select
-                    value={formData.assigned_to}
-                    onValueChange={(value) =>
-                      setFormData({ ...formData, assigned_to: value })
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Chọn nhân viên" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {users.map((user) => (
-                        <SelectItem key={user.id} value={user.id}>
-                          {user.name || user.email}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="next_follow_up">Lịch follow-up</Label>
-                <Input
-                  id="next_follow_up"
-                  type="datetime-local"
-                  value={formData.next_follow_up}
-                  onChange={(e) =>
-                    setFormData({ ...formData, next_follow_up: e.target.value })
-                  }
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="notes">Ghi chú</Label>
-                <Textarea
-                  id="notes"
-                  value={formData.notes}
-                  onChange={(e) =>
-                    setFormData({ ...formData, notes: e.target.value })
-                  }
-                  rows={3}
-                />
               </div>
 
               <DialogFooter>
@@ -1320,6 +1832,44 @@ export default function LeadsPage() {
                 </Button>
               </DialogFooter>
             </form>
+          </DialogContent>
+        </Dialog>
+
+        {/* Bulk Assign Modal */}
+        <Dialog open={isBulkAssignModalOpen} onOpenChange={setIsBulkAssignModalOpen}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Phân công hàng loạt</DialogTitle>
+              <DialogDescription>
+                Chọn nhân viên để phân công cho {selectedLeadIds.size} lead đã chọn.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>Chọn nhân viên</Label>
+                <StaffMultiSelector
+                  staff={users}
+                  value={bulkAssignees}
+                  onChange={setBulkAssignees}
+                  maxSelected={1}
+                  placeholder="Chọn nhân viên phụ trách"
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setIsBulkAssignModalOpen(false)
+                  setBulkAssignees([])
+                }}
+              >
+                Hủy
+              </Button>
+              <Button onClick={handleBulkAssign} disabled={bulkAssignees.length === 0}>
+                Phân công
+              </Button>
+            </DialogFooter>
           </DialogContent>
         </Dialog>
       </div>

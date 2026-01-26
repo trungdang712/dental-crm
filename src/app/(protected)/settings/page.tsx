@@ -28,7 +28,11 @@ import {
   Upload,
   Check,
   X,
-  ExternalLink
+  ExternalLink,
+  Settings2,
+  GripVertical,
+  Plus,
+  Trash2
 } from 'lucide-react'
 import { toast } from 'sonner'
 
@@ -78,6 +82,25 @@ export default function SettingsPage() {
     whatsapp: { connected: true, phone: '+84901234567' },
     googleCalendar: { connected: false, email: '' },
   })
+
+  // CRM Settings (admin only)
+  const [pipelineStages, setPipelineStages] = useState([
+    { id: '1', name: 'Mới', color: '#3b82f6', order: 1 },
+    { id: '2', name: 'Đã Liên Hệ', color: '#8b5cf6', order: 2 },
+    { id: '3', name: 'Đủ Điều Kiện', color: '#06b6d4', order: 3 },
+    { id: '4', name: 'Đã Báo Giá', color: '#f59e0b', order: 4 },
+    { id: '5', name: 'Đàm Phán', color: '#f97316', order: 5 },
+    { id: '6', name: 'Thành Công', color: '#10b981', order: 6 },
+    { id: '7', name: 'Thất Bại', color: '#6b7280', order: 7 },
+  ])
+  const [leadSources, setLeadSources] = useState([
+    { id: '1', name: 'Facebook', icon: 'facebook' },
+    { id: '2', name: 'Google', icon: 'google' },
+    { id: '3', name: 'Giới thiệu', icon: 'referral' },
+    { id: '4', name: 'Khách vãng lai', icon: 'walkin' },
+    { id: '5', name: 'Website', icon: 'website' },
+    { id: '6', name: 'Chat', icon: 'chat' },
+  ])
 
   const handleSaveProfile = async () => {
     setIsSubmitting(true)
@@ -148,7 +171,7 @@ export default function SettingsPage() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-5 lg:w-auto lg:inline-grid">
+        <TabsList className={`grid w-full ${isAdmin ? 'grid-cols-6' : 'grid-cols-4'} lg:w-auto lg:inline-grid`}>
           <TabsTrigger value="profile" className="gap-2">
             <User className="w-4 h-4" />
             <span className="hidden sm:inline">Cá nhân</span>
@@ -165,6 +188,12 @@ export default function SettingsPage() {
             <Plug className="w-4 h-4" />
             <span className="hidden sm:inline">Tích hợp</span>
           </TabsTrigger>
+          {isAdmin && (
+            <TabsTrigger value="crm" className="gap-2">
+              <Settings2 className="w-4 h-4" />
+              <span className="hidden sm:inline">CRM</span>
+            </TabsTrigger>
+          )}
           {isAdmin && (
             <TabsTrigger value="company" className="gap-2">
               <Building className="w-4 h-4" />
@@ -685,6 +714,130 @@ export default function SettingsPage() {
             </CardContent>
           </Card>
         </TabsContent>
+
+        {/* CRM Settings Tab (Admin only) */}
+        {isAdmin && (
+          <TabsContent value="crm" className="space-y-6">
+            {/* Pipeline Stages */}
+            <Card>
+              <CardHeader>
+                <div className="flex items-center gap-2">
+                  <Settings2 className="w-5 h-5" />
+                  <CardTitle>Giai đoạn Pipeline</CardTitle>
+                </div>
+                <CardDescription>
+                  Tùy chỉnh các giai đoạn trong quy trình bán hàng
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  {pipelineStages.map((stage, index) => (
+                    <div
+                      key={stage.id}
+                      className="flex items-center gap-3 p-3 border rounded-lg bg-muted/30"
+                    >
+                      <GripVertical className="w-4 h-4 text-muted-foreground cursor-move" />
+                      <div
+                        className="w-4 h-4 rounded-full flex-shrink-0"
+                        style={{ backgroundColor: stage.color }}
+                      />
+                      <input
+                        type="text"
+                        value={stage.name}
+                        onChange={(e) => {
+                          const updated = [...pipelineStages]
+                          updated[index].name = e.target.value
+                          setPipelineStages(updated)
+                        }}
+                        className="flex-1 bg-transparent border-none focus:outline-none font-medium"
+                      />
+                      <input
+                        type="color"
+                        value={stage.color}
+                        onChange={(e) => {
+                          const updated = [...pipelineStages]
+                          updated[index].color = e.target.value
+                          setPipelineStages(updated)
+                        }}
+                        className="w-8 h-8 rounded cursor-pointer border-0"
+                      />
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                        disabled={pipelineStages.length <= 2}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+                <Button variant="outline" size="sm" className="w-full">
+                  <Plus className="w-4 h-4 mr-2" />
+                  Thêm giai đoạn
+                </Button>
+                <p className="text-xs text-muted-foreground">
+                  Kéo thả để sắp xếp lại thứ tự. Thay đổi sẽ ảnh hưởng đến tất cả leads.
+                </p>
+              </CardContent>
+            </Card>
+
+            {/* Lead Sources */}
+            <Card>
+              <CardHeader>
+                <div className="flex items-center gap-2">
+                  <Settings2 className="w-5 h-5" />
+                  <CardTitle>Nguồn Lead</CardTitle>
+                </div>
+                <CardDescription>
+                  Quản lý các nguồn khách hàng tiềm năng
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  {leadSources.map((source, index) => (
+                    <div
+                      key={source.id}
+                      className="flex items-center gap-3 p-3 border rounded-lg bg-muted/30"
+                    >
+                      <GripVertical className="w-4 h-4 text-muted-foreground cursor-move" />
+                      <input
+                        type="text"
+                        value={source.name}
+                        onChange={(e) => {
+                          const updated = [...leadSources]
+                          updated[index].name = e.target.value
+                          setLeadSources(updated)
+                        }}
+                        className="flex-1 bg-transparent border-none focus:outline-none font-medium"
+                      />
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                        disabled={leadSources.length <= 1}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+                <Button variant="outline" size="sm" className="w-full">
+                  <Plus className="w-4 h-4 mr-2" />
+                  Thêm nguồn
+                </Button>
+              </CardContent>
+            </Card>
+
+            {/* Save Button */}
+            <div className="flex justify-end">
+              <Button onClick={() => toast.success('Đã lưu cài đặt CRM')} disabled={isSubmitting}>
+                {isSubmitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                Lưu cài đặt CRM
+              </Button>
+            </div>
+          </TabsContent>
+        )}
 
         {/* Company Tab (Admin only) */}
         {isAdmin && (
