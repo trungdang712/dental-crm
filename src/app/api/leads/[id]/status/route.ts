@@ -38,13 +38,9 @@ export async function PATCH(
     // Update status - the trigger will auto-update status_updated_at and create activity
     const { data, error } = await supabase
       .from('crm_leads')
-      .update({ status })
+      .update({ status, status_updated_at: new Date().toISOString() })
       .eq('id', id)
-      .select(`
-        *,
-        assigned_user:users!crm_leads_assigned_to_fkey(id, name, email, avatar_url),
-        creator:users!crm_leads_created_by_fkey(id, name, email)
-      `)
+      .select('*')
       .single()
 
     if (error) {
@@ -55,7 +51,18 @@ export async function PATCH(
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
-    return NextResponse.json({ data })
+    // Fetch the full lead data with relations separately
+    const { data: fullLead } = await supabase
+      .from('crm_leads')
+      .select(`
+        *,
+        assigned_user:users!crm_leads_assigned_to_fkey(id, name, email, avatar_url),
+        creator:users!crm_leads_created_by_fkey(id, name, email)
+      `)
+      .eq('id', id)
+      .single()
+
+    return NextResponse.json({ data: fullLead || data })
   } catch (error) {
     console.error('Error in PATCH /api/leads/[id]/status:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
