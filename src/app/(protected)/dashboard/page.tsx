@@ -71,7 +71,17 @@ export default function DashboardPage() {
 
       const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1)
 
-      // Fetch all counts in parallel
+      // Helper to add timeout to queries
+      const withTimeout = <T,>(promise: PromiseLike<T>, ms = 10000): Promise<T> => {
+        return Promise.race([
+          Promise.resolve(promise),
+          new Promise<T>((_, reject) =>
+            setTimeout(() => reject(new Error('Query timeout')), ms)
+          )
+        ])
+      }
+
+      // Fetch all counts in parallel with timeout
       const [
         totalLeadsResult,
         newTodayResult,
@@ -86,68 +96,68 @@ export default function DashboardPage() {
         pendingQuotationsResult
       ] = await Promise.all([
         // Total leads
-        supabase.from('crm_leads').select('id', { count: 'exact', head: true }),
+        withTimeout(supabase.from('crm_leads').select('id', { count: 'exact', head: true })),
 
         // New leads today
-        supabase.from('crm_leads')
+        withTimeout(supabase.from('crm_leads')
           .select('id', { count: 'exact', head: true })
           .gte('created_at', today.toISOString())
-          .lt('created_at', tomorrow.toISOString()),
+          .lt('created_at', tomorrow.toISOString())),
 
         // New leads this week
-        supabase.from('crm_leads')
+        withTimeout(supabase.from('crm_leads')
           .select('id', { count: 'exact', head: true })
-          .gte('created_at', startOfWeek.toISOString()),
+          .gte('created_at', startOfWeek.toISOString())),
 
         // Won this month
-        supabase.from('crm_leads')
+        withTimeout(supabase.from('crm_leads')
           .select('id', { count: 'exact', head: true })
           .eq('status', 'won')
-          .gte('status_updated_at', startOfMonth.toISOString()),
+          .gte('status_updated_at', startOfMonth.toISOString())),
 
         // Pipeline value (exclude won/lost)
-        supabase.from('crm_leads')
+        withTimeout(supabase.from('crm_leads')
           .select('estimated_value')
-          .not('status', 'in', '(won,lost)'),
+          .not('status', 'in', '(won,lost)')),
 
         // Today's follow-ups
-        supabase.from('crm_leads')
+        withTimeout(supabase.from('crm_leads')
           .select('*, assigned_user:users!crm_leads_assigned_to_fkey(id, name, email)')
           .gte('next_follow_up', today.toISOString())
           .lt('next_follow_up', tomorrow.toISOString())
           .order('next_follow_up', { ascending: true })
-          .limit(5),
+          .limit(5)),
 
         // Recent leads
-        supabase.from('crm_leads')
+        withTimeout(supabase.from('crm_leads')
           .select('*, assigned_user:users!crm_leads_assigned_to_fkey(id, name, email)')
           .order('created_at', { ascending: false })
-          .limit(5),
+          .limit(5)),
 
         // Recent activities
-        supabase.from('crm_activities')
+        withTimeout(supabase.from('crm_activities')
           .select('*, creator:users!crm_activities_created_by_fkey(id, name, email)')
           .order('created_at', { ascending: false })
-          .limit(10),
+          .limit(10)),
 
         // Ready to convert (qualified/quoted + hot priority)
-        supabase.from('crm_leads')
+        withTimeout(supabase.from('crm_leads')
           .select('*, assigned_user:users!crm_leads_assigned_to_fkey(id, name, email)')
           .in('status', ['qualified', 'quoted'])
           .eq('priority', 'hot')
           .order('estimated_value', { ascending: false })
-          .limit(5),
+          .limit(5)),
 
         // Overdue follow-ups
-        supabase.from('crm_leads')
+        withTimeout(supabase.from('crm_leads')
           .select('*, assigned_user:users!crm_leads_assigned_to_fkey(id, name, email)')
           .lt('next_follow_up', today.toISOString())
           .not('status', 'in', '(won,lost)')
           .order('next_follow_up', { ascending: true })
-          .limit(5),
+          .limit(5)),
 
         // Pending quotations (completed status = sent to customer, waiting for response)
-        supabase.from('quotations')
+        withTimeout(supabase.from('quotations')
           .select(`
             id,
             quotation_number,
@@ -162,7 +172,7 @@ export default function DashboardPage() {
           `)
           .eq('status', 'completed')
           .order('created_at', { ascending: false })
-          .limit(5)
+          .limit(5))
       ])
 
       // Calculate pipeline value
