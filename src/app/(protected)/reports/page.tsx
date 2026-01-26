@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import {
   Select,
   SelectContent,
@@ -17,10 +18,26 @@ import {
   DollarSign,
   Target,
   Loader2,
-  Calendar
+  Calendar,
+  Download
 } from 'lucide-react'
 import { format, startOfMonth, endOfMonth, subMonths } from 'date-fns'
 import { vi } from 'date-fns/locale'
+import {
+  BarChart,
+  Bar,
+  LineChart,
+  Line,
+  PieChart,
+  Pie,
+  Cell,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer
+} from 'recharts'
 import type { Lead, LeadStatus } from '@/lib/types'
 
 interface ReportStats {
@@ -35,10 +52,33 @@ interface ReportStats {
   byPriority: Record<string, number>
 }
 
+const STATUS_COLORS: Record<string, string> = {
+  new: '#3b82f6',
+  contacted: '#8b5cf6',
+  qualified: '#06b6d4',
+  quoted: '#f59e0b',
+  negotiating: '#f97316',
+  won: '#10b981',
+  lost: '#6b7280',
+}
+
+const SOURCE_COLORS: Record<string, string> = {
+  facebook: '#3b82f6',
+  google: '#10b981',
+  referral: '#f59e0b',
+  walkin: '#8b5cf6',
+  website: '#06b6d4',
+  chat: '#ec4899',
+  unknown: '#6b7280',
+}
+
 export default function ReportsPage() {
   const [loading, setLoading] = useState(true)
-  const [period, setPeriod] = useState('this_month')
+  const [period, setPeriod] = useState('last_6_months')
   const [stats, setStats] = useState<ReportStats | null>(null)
+  const [funnelData, setFunnelData] = useState<any[]>([])
+  const [sourceData, setSourceData] = useState<any[]>([])
+  const [monthlyData, setMonthlyData] = useState<any[]>([])
 
   const supabase = createClient()
 
@@ -73,7 +113,7 @@ export default function ReportsPage() {
         end = new Date(now.getFullYear(), 11, 31)
         break
       default:
-        start = startOfMonth(now)
+        start = startOfMonth(subMonths(now, 5))
         end = endOfMonth(now)
     }
 
@@ -125,6 +165,40 @@ export default function ReportsPage() {
         byPriority[lead.priority] = (byPriority[lead.priority] || 0) + 1
       })
 
+      // Prepare chart data
+      const funnel = [
+        { stage: 'Mới', count: byStatus['new'] || 0, fill: STATUS_COLORS.new },
+        { stage: 'Đã liên hệ', count: byStatus['contacted'] || 0, fill: STATUS_COLORS.contacted },
+        { stage: 'Đủ điều kiện', count: byStatus['qualified'] || 0, fill: STATUS_COLORS.qualified },
+        { stage: 'Đã báo giá', count: byStatus['quoted'] || 0, fill: STATUS_COLORS.quoted },
+        { stage: 'Đàm phán', count: byStatus['negotiating'] || 0, fill: STATUS_COLORS.negotiating },
+        { stage: 'Thành công', count: byStatus['won'] || 0, fill: STATUS_COLORS.won },
+      ]
+
+      const source = Object.entries(bySource).map(([name, value]) => ({
+        name: sourceLabels[name] || name,
+        value,
+        fill: SOURCE_COLORS[name] || '#6b7280',
+      }))
+
+      // Calculate monthly data
+      const monthly: Record<string, { newLeads: number; conversions: number }> = {}
+      leads?.forEach(lead => {
+        const month = format(new Date(lead.created_at), 'MMM', { locale: vi })
+        if (!monthly[month]) {
+          monthly[month] = { newLeads: 0, conversions: 0 }
+        }
+        monthly[month].newLeads++
+        if (lead.status === 'won') {
+          monthly[month].conversions++
+        }
+      })
+
+      const monthlyArr = Object.entries(monthly).map(([month, data]) => ({
+        month,
+        ...data,
+      }))
+
       setStats({
         totalLeads,
         leadsWon,
@@ -136,6 +210,9 @@ export default function ReportsPage() {
         bySource,
         byPriority,
       })
+      setFunnelData(funnel)
+      setSourceData(source)
+      setMonthlyData(monthlyArr)
     } catch (error) {
       console.error('Error fetching report data:', error)
     } finally {
@@ -171,12 +248,6 @@ export default function ReportsPage() {
     unknown: 'Không xác định',
   }
 
-  const priorityLabels: Record<string, string> = {
-    hot: 'Nóng',
-    warm: 'Ấm',
-    cold: 'Lạnh',
-  }
-
   const periodLabels: Record<string, string> = {
     this_month: 'Tháng này',
     last_month: 'Tháng trước',
@@ -198,15 +269,15 @@ export default function ReportsPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Báo cáo</h1>
-          <p className="text-muted-foreground">
-            Phân tích hiệu suất bán hàng
+          <h1 className="text-2xl font-bold text-[#1e293b]">Báo Cáo & Phân Tích</h1>
+          <p className="text-[#64748b]">
+            Thống kê hiệu suất bán hàng
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <Calendar className="w-4 h-4 text-muted-foreground" />
+        <div className="flex items-center gap-3">
           <Select value={period} onValueChange={setPeriod}>
             <SelectTrigger className="w-48">
+              <Calendar className="w-4 h-4 mr-2" />
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -217,85 +288,184 @@ export default function ReportsPage() {
               <SelectItem value="this_year">Năm nay</SelectItem>
             </SelectContent>
           </Select>
+          <Button variant="outline">
+            <Download className="w-4 h-4 mr-2" />
+            Xuất Báo Cáo
+          </Button>
         </div>
       </div>
 
       {/* KPI Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card>
+        <Card className="bg-white">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
+            <CardTitle className="text-sm font-medium text-[#64748b]">
               Tổng Leads
             </CardTitle>
-            <Users className="w-4 h-4 text-muted-foreground" />
+            <Users className="w-4 h-4 text-[#64748b]" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats?.totalLeads || 0}</div>
-            <p className="text-xs text-muted-foreground">
+            <div className="text-2xl font-bold text-[#1e293b]">{stats?.totalLeads || 0}</div>
+            <p className="text-xs text-[#64748b]">
               trong {periodLabels[period].toLowerCase()}
             </p>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="bg-white">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
+            <CardTitle className="text-sm font-medium text-[#64748b]">
               Tỷ Lệ Chuyển Đổi
             </CardTitle>
-            <Target className="w-4 h-4 text-muted-foreground" />
+            <Target className="w-4 h-4 text-[#64748b]" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
+            <div className="text-2xl font-bold text-[#1e293b]">
               {(stats?.conversionRate || 0).toFixed(1)}%
             </div>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-[#64748b]">
               {stats?.leadsWon || 0} thành công / {stats?.leadsLost || 0} thất bại
             </p>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="bg-white">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
+            <CardTitle className="text-sm font-medium text-[#64748b]">
               Doanh Thu
             </CardTitle>
-            <DollarSign className="w-4 h-4 text-muted-foreground" />
+            <DollarSign className="w-4 h-4 text-[#64748b]" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
+            <div className="text-2xl font-bold text-[#1e293b]">
               {formatCurrency(stats?.totalValue || 0)}
             </div>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-[#64748b]">
               từ leads thành công
             </p>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="bg-white">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
+            <CardTitle className="text-sm font-medium text-[#64748b]">
               Giá Trị TB/Deal
             </CardTitle>
-            <TrendingUp className="w-4 h-4 text-muted-foreground" />
+            <TrendingUp className="w-4 h-4 text-[#64748b]" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
+            <div className="text-2xl font-bold text-[#1e293b]">
               {formatCurrency(stats?.avgDealSize || 0)}
             </div>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-[#64748b]">
               trung bình mỗi deal
             </p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Charts Grid */}
+      {/* Charts Row 1 */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Conversion Funnel */}
+        <Card className="bg-white">
+          <CardHeader>
+            <CardTitle className="text-[#1e293b]">Phễu Chuyển Đổi</CardTitle>
+            <CardDescription>Số lượng leads theo từng giai đoạn</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={funnelData} layout="horizontal">
+                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                <XAxis dataKey="stage" tick={{ fontSize: 12 }} />
+                <YAxis tick={{ fontSize: 12 }} />
+                <Tooltip
+                  contentStyle={{ backgroundColor: 'white', border: '1px solid #e2e8f0' }}
+                />
+                <Bar dataKey="count" name="Số lượng" radius={[4, 4, 0, 0]}>
+                  {funnelData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.fill} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+
+        {/* Leads by Source */}
+        <Card className="bg-white">
+          <CardHeader>
+            <CardTitle className="text-[#1e293b]">Nguồn Leads</CardTitle>
+            <CardDescription>Phân bố leads theo nguồn</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={300}>
+              <PieChart>
+                <Pie
+                  data={sourceData}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={60}
+                  outerRadius={100}
+                  paddingAngle={5}
+                  dataKey="value"
+                  label={({ name, percent }) => `${name} ${((percent || 0) * 100).toFixed(0)}%`}
+                >
+                  {sourceData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.fill} />
+                  ))}
+                </Pie>
+                <Tooltip
+                  contentStyle={{ backgroundColor: 'white', border: '1px solid #e2e8f0' }}
+                />
+              </PieChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Monthly Trend */}
+      <Card className="bg-white">
+        <CardHeader>
+          <CardTitle className="text-[#1e293b]">Xu Hướng Theo Tháng</CardTitle>
+          <CardDescription>Leads mới và chuyển đổi theo thời gian</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <ResponsiveContainer width="100%" height={300}>
+            <LineChart data={monthlyData}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+              <XAxis dataKey="month" tick={{ fontSize: 12 }} />
+              <YAxis tick={{ fontSize: 12 }} />
+              <Tooltip
+                contentStyle={{ backgroundColor: 'white', border: '1px solid #e2e8f0' }}
+              />
+              <Legend />
+              <Line
+                type="monotone"
+                dataKey="newLeads"
+                name="Leads mới"
+                stroke="#3b82f6"
+                strokeWidth={2}
+                dot={{ fill: '#3b82f6' }}
+              />
+              <Line
+                type="monotone"
+                dataKey="conversions"
+                name="Chuyển đổi"
+                stroke="#10b981"
+                strokeWidth={2}
+                dot={{ fill: '#10b981' }}
+              />
+            </LineChart>
+          </ResponsiveContainer>
+        </CardContent>
+      </Card>
+
+      {/* Summary Cards */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* By Status */}
-        <Card>
+        <Card className="bg-white">
           <CardHeader>
-            <CardTitle>Theo Trạng Thái</CardTitle>
-            <CardDescription>Phân bố leads theo giai đoạn</CardDescription>
+            <CardTitle className="text-[#1e293b]">Theo Trạng Thái</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
@@ -305,18 +475,24 @@ export default function ReportsPage() {
                   : '0'
                 return (
                   <div key={status} className="flex items-center justify-between">
-                    <span className="text-sm">
-                      {statusLabels[status] || status}
-                    </span>
                     <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium">{count}</span>
-                      <Badge variant="outline">{percentage}%</Badge>
+                      <div
+                        className="w-3 h-3 rounded-full"
+                        style={{ backgroundColor: STATUS_COLORS[status] || '#6b7280' }}
+                      />
+                      <span className="text-sm text-[#1e293b]">
+                        {statusLabels[status] || status}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium text-[#1e293b]">{count}</span>
+                      <Badge variant="outline" className="text-xs">{percentage}%</Badge>
                     </div>
                   </div>
                 )
               })}
               {Object.keys(stats?.byStatus || {}).length === 0 && (
-                <p className="text-sm text-muted-foreground text-center py-4">
+                <p className="text-sm text-[#64748b] text-center py-4">
                   Không có dữ liệu
                 </p>
               )}
@@ -325,10 +501,9 @@ export default function ReportsPage() {
         </Card>
 
         {/* By Source */}
-        <Card>
+        <Card className="bg-white">
           <CardHeader>
-            <CardTitle>Theo Nguồn</CardTitle>
-            <CardDescription>Nguồn leads hiệu quả nhất</CardDescription>
+            <CardTitle className="text-[#1e293b]">Theo Nguồn</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
@@ -340,18 +515,24 @@ export default function ReportsPage() {
                     : '0'
                   return (
                     <div key={source} className="flex items-center justify-between">
-                      <span className="text-sm">
-                        {sourceLabels[source] || source}
-                      </span>
                       <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium">{count}</span>
-                        <Badge variant="outline">{percentage}%</Badge>
+                        <div
+                          className="w-3 h-3 rounded-full"
+                          style={{ backgroundColor: SOURCE_COLORS[source] || '#6b7280' }}
+                        />
+                        <span className="text-sm text-[#1e293b]">
+                          {sourceLabels[source] || source}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium text-[#1e293b]">{count}</span>
+                        <Badge variant="outline" className="text-xs">{percentage}%</Badge>
                       </div>
                     </div>
                   )
                 })}
               {Object.keys(stats?.bySource || {}).length === 0 && (
-                <p className="text-sm text-muted-foreground text-center py-4">
+                <p className="text-sm text-[#64748b] text-center py-4">
                   Không có dữ liệu
                 </p>
               )}
@@ -360,39 +541,37 @@ export default function ReportsPage() {
         </Card>
 
         {/* By Priority */}
-        <Card>
+        <Card className="bg-white">
           <CardHeader>
-            <CardTitle>Theo Mức Độ</CardTitle>
-            <CardDescription>Phân bố leads theo độ ưu tiên</CardDescription>
+            <CardTitle className="text-[#1e293b]">Theo Mức Độ</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {Object.entries(stats?.byPriority || {})
-                .sort((a, b) => {
-                  const order = { hot: 0, warm: 1, cold: 2 }
-                  return (order[a[0] as keyof typeof order] || 3) - (order[b[0] as keyof typeof order] || 3)
-                })
-                .map(([priority, count]) => {
-                  const percentage = stats?.totalLeads
-                    ? ((count / stats.totalLeads) * 100).toFixed(1)
-                    : '0'
-                  return (
-                    <div key={priority} className="flex items-center justify-between">
-                      <span className="text-sm">
-                        {priorityLabels[priority] || priority}
-                      </span>
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium">{count}</span>
-                        <Badge variant="outline">{percentage}%</Badge>
-                      </div>
+              {[
+                { key: 'hot', label: 'Nóng', color: '#ef4444' },
+                { key: 'warm', label: 'Ấm', color: '#f97316' },
+                { key: 'cold', label: 'Lạnh', color: '#3b82f6' },
+              ].map(({ key, label, color }) => {
+                const count = stats?.byPriority[key] || 0
+                const percentage = stats?.totalLeads
+                  ? ((count / stats.totalLeads) * 100).toFixed(1)
+                  : '0'
+                return (
+                  <div key={key} className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div
+                        className="w-3 h-3 rounded-full"
+                        style={{ backgroundColor: color }}
+                      />
+                      <span className="text-sm text-[#1e293b]">{label}</span>
                     </div>
-                  )
-                })}
-              {Object.keys(stats?.byPriority || {}).length === 0 && (
-                <p className="text-sm text-muted-foreground text-center py-4">
-                  Không có dữ liệu
-                </p>
-              )}
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium text-[#1e293b]">{count}</span>
+                      <Badge variant="outline" className="text-xs">{percentage}%</Badge>
+                    </div>
+                  </div>
+                )
+              })}
             </div>
           </CardContent>
         </Card>

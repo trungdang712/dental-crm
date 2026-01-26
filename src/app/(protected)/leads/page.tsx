@@ -41,7 +41,10 @@ import {
   Kanban,
   List,
   RefreshCw,
-  MessageSquare
+  MessageSquare,
+  ChevronLeft,
+  Edit,
+  Trash2
 } from 'lucide-react'
 import Link from 'next/link'
 import { toast } from 'sonner'
@@ -131,6 +134,26 @@ function LeadCard({ lead, onClick }: LeadCardProps) {
         </div>
       </div>
 
+      {/* Chat Channel Badge & Preview */}
+      {lead.chat_channel && (
+        <div className="mb-2 p-2 rounded bg-muted/50 border border-border">
+          <div className="flex items-center gap-1.5 mb-1">
+            <MessageSquare className="w-3 h-3 text-primary" />
+            <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+              {lead.chat_channel === 'zalo' ? 'Zalo' :
+               lead.chat_channel === 'whatsapp' ? 'WhatsApp' :
+               lead.chat_channel === 'messenger' ? 'Messenger' :
+               lead.chat_channel === 'phone' ? 'Phone' : lead.chat_channel}
+            </Badge>
+          </div>
+          {lead.last_chat_message && (
+            <p className="text-[10px] text-muted-foreground line-clamp-1 italic">
+              "{lead.last_chat_message}"
+            </p>
+          )}
+        </div>
+      )}
+
       {/* Interest */}
       {lead.interest && (
         <p className="text-xs text-muted-foreground mb-2 line-clamp-1">
@@ -187,6 +210,65 @@ function LeadCard({ lead, onClick }: LeadCardProps) {
   )
 }
 
+interface CollapsedColumnProps {
+  status: LeadStatus
+  label: string
+  color: string
+  leads: Lead[]
+  onDrop: (leadId: string, newStatus: LeadStatus) => void
+  onExpand: () => void
+}
+
+function CollapsedColumn({ status, label, color, leads, onDrop, onExpand }: CollapsedColumnProps) {
+  const [{ isOver }, drop] = useDrop({
+    accept: ITEM_TYPE,
+    drop: (item: { id: string; currentStatus: LeadStatus }) => {
+      if (item.currentStatus !== status) {
+        onDrop(item.id, status)
+      }
+    },
+    collect: (monitor) => ({
+      isOver: monitor.isOver(),
+    }),
+  })
+
+  const dropRef = (el: HTMLDivElement | null) => {
+    drop(el)
+  }
+
+  const totalValue = leads.reduce((sum, lead) => sum + (lead.estimated_value || 0), 0)
+
+  return (
+    <div
+      ref={dropRef}
+      onClick={onExpand}
+      className={`flex-shrink-0 w-16 rounded-lg border-2 cursor-pointer transition-all ${
+        isOver ? 'border-primary bg-primary/5' : 'border-border bg-muted/30'
+      }`}
+      style={{ backgroundColor: isOver ? undefined : color + '10' }}
+    >
+      <div className="h-full flex flex-col items-center py-4 px-2">
+        <div
+          className="w-3 h-3 rounded-full mb-2"
+          style={{ backgroundColor: color }}
+        />
+        <span
+          className="text-xs font-semibold mb-1 writing-mode-vertical"
+          style={{ writingMode: 'vertical-rl', textOrientation: 'mixed' }}
+        >
+          {label}
+        </span>
+        <Badge className="text-[10px] px-1.5 py-0 mt-2" style={{ backgroundColor: color + '30', color: color }}>
+          {leads.length}
+        </Badge>
+        <span className="text-[10px] text-muted-foreground mt-2 writing-mode-vertical" style={{ writingMode: 'vertical-rl' }}>
+          ${(totalValue / 1000).toFixed(0)}k
+        </span>
+      </div>
+    </div>
+  )
+}
+
 interface PipelineColumnProps {
   status: LeadStatus
   label: string
@@ -194,9 +276,10 @@ interface PipelineColumnProps {
   leads: Lead[]
   onDrop: (leadId: string, newStatus: LeadStatus) => void
   onLeadClick: (lead: Lead) => void
+  onCollapse?: () => void
 }
 
-function PipelineColumn({ status, label, color, leads, onDrop, onLeadClick }: PipelineColumnProps) {
+function PipelineColumn({ status, label, color, leads, onDrop, onLeadClick, onCollapse }: PipelineColumnProps) {
   const [{ isOver }, drop] = useDrop({
     accept: ITEM_TYPE,
     drop: (item: { id: string; currentStatus: LeadStatus }) => {
@@ -234,6 +317,20 @@ function PipelineColumn({ status, label, color, leads, onDrop, onLeadClick }: Pi
                 {leads.length}
               </span>
             </h3>
+            {onCollapse && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onCollapse()
+                }}
+                title="Thu gọn cột"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+            )}
           </div>
           <p className="text-sm text-muted-foreground">
             ${totalValue.toLocaleString()}
@@ -270,7 +367,10 @@ export default function LeadsPage() {
   const [viewMode, setViewMode] = useState<'pipeline' | 'list'>('pipeline')
   const [isAddModalOpen, setIsAddModalOpen] = useState(false)
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null)
+  const [editingLead, setEditingLead] = useState<Lead | null>(null)
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [users, setUsers] = useState<UserType[]>([])
+  const [expandedColumns, setExpandedColumns] = useState<Set<LeadStatus>>(new Set())
 
   // Form state
   const [formData, setFormData] = useState({
@@ -287,6 +387,22 @@ export default function LeadsPage() {
     next_follow_up: '',
   })
   const [isSubmitting, setIsSubmitting] = useState(false)
+
+  // Edit form state
+  const [editFormData, setEditFormData] = useState({
+    first_name: '',
+    last_name: '',
+    phone: '',
+    email: '',
+    source: '' as LeadSource | '',
+    interest: '',
+    estimated_value: '',
+    priority: 'warm' as LeadPriority,
+    status: 'new' as LeadStatus,
+    assigned_to: '',
+    notes: '',
+    next_follow_up: '',
+  })
 
   const supabase = createClient()
 
@@ -405,6 +521,87 @@ export default function LeadsPage() {
     })
   }
 
+  const openEditModal = (lead: Lead) => {
+    setEditingLead(lead)
+    setEditFormData({
+      first_name: lead.first_name,
+      last_name: lead.last_name,
+      phone: lead.phone,
+      email: lead.email || '',
+      source: lead.source || '',
+      interest: lead.interest || '',
+      estimated_value: lead.estimated_value?.toString() || '',
+      priority: lead.priority,
+      status: lead.status,
+      assigned_to: lead.assigned_to || '',
+      notes: lead.notes || '',
+      next_follow_up: lead.next_follow_up ? new Date(lead.next_follow_up).toISOString().slice(0, 16) : '',
+    })
+    setIsEditModalOpen(true)
+    setSelectedLead(null)
+  }
+
+  const handleEditLead = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!editingLead) return
+    setIsSubmitting(true)
+
+    try {
+      const response = await fetch(`/api/leads/${editingLead.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...editFormData,
+          estimated_value: editFormData.estimated_value
+            ? parseFloat(editFormData.estimated_value)
+            : null,
+          source: editFormData.source || null,
+          assigned_to: editFormData.assigned_to || null,
+          next_follow_up: editFormData.next_follow_up || null,
+        }),
+      })
+
+      if (response.ok) {
+        const result = await response.json()
+        setLeads((prev) =>
+          prev.map((lead) => (lead.id === editingLead.id ? result.data : lead))
+        )
+        setIsEditModalOpen(false)
+        setEditingLead(null)
+        toast.success('Đã cập nhật lead')
+      } else {
+        const errorData = await response.json()
+        toast.error(errorData.error || 'Không thể cập nhật lead')
+      }
+    } catch (error) {
+      console.error('Error updating lead:', error)
+      toast.error('Đã xảy ra lỗi')
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const handleDeleteLead = async (leadId: string) => {
+    if (!confirm('Bạn có chắc muốn xóa lead này?')) return
+
+    try {
+      const response = await fetch(`/api/leads/${leadId}`, {
+        method: 'DELETE',
+      })
+
+      if (response.ok) {
+        setLeads((prev) => prev.filter((lead) => lead.id !== leadId))
+        setSelectedLead(null)
+        toast.success('Đã xóa lead')
+      } else {
+        toast.error('Không thể xóa lead')
+      }
+    } catch (error) {
+      console.error('Error deleting lead:', error)
+      toast.error('Đã xảy ra lỗi')
+    }
+  }
+
   const filteredLeads = leads.filter(
     (lead) =>
       lead.first_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -490,17 +687,42 @@ export default function LeadsPage() {
         {viewMode === 'pipeline' && (
           <div className="overflow-x-auto pb-4">
             <div className="flex gap-4 min-w-max">
-              {statusColumns.map((column) => (
-                <PipelineColumn
-                  key={column.status}
-                  status={column.status}
-                  label={column.label}
-                  color={column.color}
-                  leads={filteredLeads.filter((lead) => lead.status === column.status)}
-                  onDrop={handleStatusChange}
-                  onLeadClick={(lead) => setSelectedLead(lead)}
-                />
-              ))}
+              {statusColumns.map((column) => {
+                const columnLeads = filteredLeads.filter((lead) => lead.status === column.status)
+                const isCollapsible = column.status === 'won' || column.status === 'lost'
+                const isExpanded = expandedColumns.has(column.status)
+
+                if (isCollapsible && !isExpanded) {
+                  return (
+                    <CollapsedColumn
+                      key={column.status}
+                      status={column.status}
+                      label={column.label}
+                      color={column.color}
+                      leads={columnLeads}
+                      onDrop={handleStatusChange}
+                      onExpand={() => setExpandedColumns(prev => new Set([...prev, column.status]))}
+                    />
+                  )
+                }
+
+                return (
+                  <PipelineColumn
+                    key={column.status}
+                    status={column.status}
+                    label={column.label}
+                    color={column.color}
+                    leads={columnLeads}
+                    onDrop={handleStatusChange}
+                    onLeadClick={(lead) => setSelectedLead(lead)}
+                    onCollapse={isCollapsible ? () => setExpandedColumns(prev => {
+                      const next = new Set(prev)
+                      next.delete(column.status)
+                      return next
+                    }) : undefined}
+                  />
+                )
+              })}
             </div>
           </div>
         )}
@@ -643,7 +865,26 @@ export default function LeadsPage() {
                   </div>
                 )}
               </div>
-              <DialogFooter>
+              <DialogFooter className="flex-col sm:flex-row gap-2">
+                <div className="flex gap-2 mr-auto">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => openEditModal(selectedLead)}
+                  >
+                    <Edit className="w-4 h-4 mr-1" />
+                    Sửa
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="text-destructive hover:text-destructive"
+                    onClick={() => handleDeleteLead(selectedLead.id)}
+                  >
+                    <Trash2 className="w-4 h-4 mr-1" />
+                    Xóa
+                  </Button>
+                </div>
                 <Button variant="outline" onClick={() => setSelectedLead(null)}>
                   Đóng
                 </Button>
@@ -850,6 +1091,232 @@ export default function LeadsPage() {
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                   )}
                   Lưu Lead
+                </Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
+
+        {/* Edit Lead Modal */}
+        <Dialog open={isEditModalOpen} onOpenChange={(open) => {
+          setIsEditModalOpen(open)
+          if (!open) setEditingLead(null)
+        }}>
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Chỉnh Sửa Lead</DialogTitle>
+              <DialogDescription>
+                Cập nhật thông tin khách hàng.
+              </DialogDescription>
+            </DialogHeader>
+            <form onSubmit={handleEditLead} className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="edit_first_name">
+                    Họ <span className="text-destructive">*</span>
+                  </Label>
+                  <Input
+                    id="edit_first_name"
+                    value={editFormData.first_name}
+                    onChange={(e) =>
+                      setEditFormData({ ...editFormData, first_name: e.target.value })
+                    }
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit_last_name">
+                    Tên <span className="text-destructive">*</span>
+                  </Label>
+                  <Input
+                    id="edit_last_name"
+                    value={editFormData.last_name}
+                    onChange={(e) =>
+                      setEditFormData({ ...editFormData, last_name: e.target.value })
+                    }
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="edit_phone">
+                    SĐT <span className="text-destructive">*</span>
+                  </Label>
+                  <Input
+                    id="edit_phone"
+                    type="tel"
+                    value={editFormData.phone}
+                    onChange={(e) =>
+                      setEditFormData({ ...editFormData, phone: e.target.value })
+                    }
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit_email">Email</Label>
+                  <Input
+                    id="edit_email"
+                    type="email"
+                    value={editFormData.email}
+                    onChange={(e) =>
+                      setEditFormData({ ...editFormData, email: e.target.value })
+                    }
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="edit_status">Trạng thái</Label>
+                  <Select
+                    value={editFormData.status}
+                    onValueChange={(value) =>
+                      setEditFormData({ ...editFormData, status: value as LeadStatus })
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {statusColumns.map((col) => (
+                        <SelectItem key={col.status} value={col.status}>
+                          {col.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit_priority">Mức độ ưu tiên</Label>
+                  <Select
+                    value={editFormData.priority}
+                    onValueChange={(value) =>
+                      setEditFormData({ ...editFormData, priority: value as LeadPriority })
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="hot">Nóng</SelectItem>
+                      <SelectItem value="warm">Ấm</SelectItem>
+                      <SelectItem value="cold">Lạnh</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="edit_source">Nguồn</Label>
+                  <Select
+                    value={editFormData.source}
+                    onValueChange={(value) =>
+                      setEditFormData({ ...editFormData, source: value as LeadSource })
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Chọn nguồn" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="facebook">Facebook</SelectItem>
+                      <SelectItem value="google">Google</SelectItem>
+                      <SelectItem value="referral">Giới thiệu</SelectItem>
+                      <SelectItem value="walkin">Khách vãng lai</SelectItem>
+                      <SelectItem value="website">Website</SelectItem>
+                      <SelectItem value="chat">Chat</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit_assigned_to">Phân công cho</Label>
+                  <Select
+                    value={editFormData.assigned_to}
+                    onValueChange={(value) =>
+                      setEditFormData({ ...editFormData, assigned_to: value })
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Chọn nhân viên" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {users.map((user) => (
+                        <SelectItem key={user.id} value={user.id}>
+                          {user.name || user.email}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="edit_interest">Dịch vụ quan tâm</Label>
+                <Input
+                  id="edit_interest"
+                  value={editFormData.interest}
+                  onChange={(e) =>
+                    setEditFormData({ ...editFormData, interest: e.target.value })
+                  }
+                  placeholder="VD: Implant, Niềng răng..."
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="edit_estimated_value">Giá trị ước tính ($)</Label>
+                  <Input
+                    id="edit_estimated_value"
+                    type="number"
+                    value={editFormData.estimated_value}
+                    onChange={(e) =>
+                      setEditFormData({ ...editFormData, estimated_value: e.target.value })
+                    }
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit_next_follow_up">Lịch follow-up</Label>
+                  <Input
+                    id="edit_next_follow_up"
+                    type="datetime-local"
+                    value={editFormData.next_follow_up}
+                    onChange={(e) =>
+                      setEditFormData({ ...editFormData, next_follow_up: e.target.value })
+                    }
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="edit_notes">Ghi chú</Label>
+                <Textarea
+                  id="edit_notes"
+                  value={editFormData.notes}
+                  onChange={(e) =>
+                    setEditFormData({ ...editFormData, notes: e.target.value })
+                  }
+                  rows={3}
+                />
+              </div>
+
+              <DialogFooter>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setIsEditModalOpen(false)
+                    setEditingLead(null)
+                  }}
+                >
+                  Hủy
+                </Button>
+                <Button type="submit" disabled={isSubmitting}>
+                  {isSubmitting && (
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  )}
+                  Lưu thay đổi
                 </Button>
               </DialogFooter>
             </form>

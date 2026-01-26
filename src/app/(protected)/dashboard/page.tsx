@@ -21,7 +21,9 @@ import {
   FileText,
   Clock,
   ExternalLink,
-  CheckCircle2
+  CheckCircle2,
+  AlertTriangle,
+  Target
 } from 'lucide-react'
 import Link from 'next/link'
 import { format } from 'date-fns'
@@ -33,6 +35,8 @@ export default function DashboardPage() {
   const [recentLeads, setRecentLeads] = useState<Lead[]>([])
   const [todayFollowUps, setTodayFollowUps] = useState<Lead[]>([])
   const [recentActivities, setRecentActivities] = useState<Activity[]>([])
+  const [readyToConvert, setReadyToConvert] = useState<Lead[]>([])
+  const [overdueFollowUps, setOverdueFollowUps] = useState<Lead[]>([])
   const [loading, setLoading] = useState(true)
 
   const supabase = createClient()
@@ -62,7 +66,9 @@ export default function DashboardPage() {
         pipelineValueResult,
         followUpsResult,
         recentLeadsResult,
-        activitiesResult
+        activitiesResult,
+        readyToConvertResult,
+        overdueFollowUpsResult
       ] = await Promise.all([
         // Total leads
         supabase.from('crm_leads').select('id', { count: 'exact', head: true }),
@@ -107,7 +113,23 @@ export default function DashboardPage() {
         supabase.from('crm_activities')
           .select('*, creator:users!crm_activities_created_by_fkey(id, name, email)')
           .order('created_at', { ascending: false })
-          .limit(10)
+          .limit(10),
+
+        // Ready to convert (qualified/quoted + hot priority)
+        supabase.from('crm_leads')
+          .select('*, assigned_user:users!crm_leads_assigned_to_fkey(id, name, email)')
+          .in('status', ['qualified', 'quoted'])
+          .eq('priority', 'hot')
+          .order('estimated_value', { ascending: false })
+          .limit(5),
+
+        // Overdue follow-ups
+        supabase.from('crm_leads')
+          .select('*, assigned_user:users!crm_leads_assigned_to_fkey(id, name, email)')
+          .lt('next_follow_up', today.toISOString())
+          .not('status', 'in', '(won,lost)')
+          .order('next_follow_up', { ascending: true })
+          .limit(5)
       ])
 
       // Calculate pipeline value
@@ -134,6 +156,8 @@ export default function DashboardPage() {
       setTodayFollowUps(followUpsResult.data || [])
       setRecentLeads(recentLeadsResult.data || [])
       setRecentActivities(activitiesResult.data || [])
+      setReadyToConvert(readyToConvertResult.data || [])
+      setOverdueFollowUps(overdueFollowUpsResult.data || [])
     } catch (error) {
       console.error('Error fetching dashboard data:', error)
     } finally {
@@ -518,6 +542,115 @@ export default function DashboardPage() {
               </div>
             </CardContent>
           </Card>
+
+          {/* Ready to Convert */}
+          <Card className="border-green-200 bg-green-50/50">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle className="flex items-center gap-2">
+                  <Target className="w-5 h-5 text-green-600" />
+                  Sẵn Sàng Chuyển Đổi
+                </CardTitle>
+                <Badge className="bg-green-500 text-white">
+                  {readyToConvert.length}
+                </Badge>
+              </div>
+              <CardDescription>
+                Lead nóng đã đủ điều kiện/đã báo giá
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {readyToConvert.map(lead => (
+                  <Link
+                    key={lead.id}
+                    href={`/leads/${lead.id}`}
+                    className="block p-3 rounded-lg border border-border bg-white hover:shadow-sm transition-all"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <Flame className="w-3.5 h-3.5 text-red-500" />
+                          <p className="font-medium text-sm truncate">{lead.first_name} {lead.last_name}</p>
+                        </div>
+                        <p className="text-xs text-muted-foreground truncate mt-1">{lead.interest}</p>
+                      </div>
+                      {lead.estimated_value && (
+                        <span className="text-sm font-semibold text-green-600">
+                          {formatCurrency(lead.estimated_value)}
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center justify-between mt-2">
+                      {getStatusBadge(lead.status)}
+                      <Button size="sm" variant="outline" className="h-6 text-xs" onClick={(e) => e.stopPropagation()}>
+                        <Phone className="w-3 h-3 mr-1" />
+                        Gọi ngay
+                      </Button>
+                    </div>
+                  </Link>
+                ))}
+                {readyToConvert.length === 0 && (
+                  <p className="text-sm text-muted-foreground text-center py-4">
+                    Chưa có lead sẵn sàng chuyển đổi
+                  </p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Overdue Follow-ups Alert */}
+          {overdueFollowUps.length > 0 && (
+            <Card className="border-red-300 bg-red-50/50">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="flex items-center gap-2 text-red-700">
+                    <AlertTriangle className="w-5 h-5" />
+                    Follow-up Quá Hạn
+                  </CardTitle>
+                  <Badge className="bg-red-500 text-white">
+                    {overdueFollowUps.length}
+                  </Badge>
+                </div>
+                <CardDescription className="text-red-600">
+                  Cần liên hệ ngay!
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  {overdueFollowUps.map(lead => {
+                    const overdueDays = lead.next_follow_up
+                      ? Math.floor((new Date().getTime() - new Date(lead.next_follow_up).getTime()) / (1000 * 60 * 60 * 24))
+                      : 0
+                    return (
+                      <Link
+                        key={lead.id}
+                        href={`/leads/${lead.id}`}
+                        className="flex items-center justify-between p-2 rounded-lg border border-red-200 bg-white hover:shadow-sm transition-all"
+                      >
+                        <div className="flex items-center gap-2 min-w-0">
+                          <div className="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
+                            <span className="text-red-600 text-xs font-semibold">
+                              {lead.first_name?.[0]}{lead.last_name?.[0]}
+                            </span>
+                          </div>
+                          <div className="min-w-0">
+                            <p className="font-medium text-sm truncate">
+                              {lead.first_name} {lead.last_name}
+                            </p>
+                            <p className="text-xs text-muted-foreground">{lead.phone}</p>
+                          </div>
+                        </div>
+                        <Badge className="bg-red-500 text-white flex-shrink-0">
+                          -{overdueDays}d
+                        </Badge>
+                      </Link>
+                    )
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </div>
       </div>
 
