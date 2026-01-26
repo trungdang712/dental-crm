@@ -432,10 +432,14 @@ export default function DashboardPage() {
                     const totalAmount = quote.items?.reduce((sum, item) => {
                       return sum + ((item.quantity || 1) * (item.unit_price_vnd || 0))
                     }, 0) || 0
+                    const quotationUrl = process.env.NEXT_PUBLIC_QUOTATION_TOOL_URL || '#'
                     return (
-                      <div
+                      <a
                         key={quote.id}
-                        className="flex items-start gap-3 p-3 rounded-lg bg-white border border-border hover:shadow-sm transition-all"
+                        href={`${quotationUrl}/quotations/${quote.id}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-start gap-3 p-3 rounded-lg bg-white border border-border hover:shadow-sm transition-all cursor-pointer"
                       >
                         <div className="flex-1 min-w-0">
                           <div className="flex items-start justify-between gap-2">
@@ -454,7 +458,7 @@ export default function DashboardPage() {
                             </div>
                           </div>
                         </div>
-                      </div>
+                      </a>
                     )
                   })}
                 </div>

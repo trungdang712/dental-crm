@@ -33,7 +33,7 @@ const navItems: NavItem[] = [
   { href: '/dashboard', label: 'Tổng quan', icon: LayoutDashboard },
   { href: '#', label: 'Chat Inbox', icon: MessageSquare, badge: 3, badgeColor: 'bg-red-500 text-white', disabled: true },
   { href: '/leads', label: 'Leads', icon: Users, badge: 12, badgeColor: 'bg-blue-500 text-white' },
-  { href: '#', label: 'Báo Giá', icon: FileText, badge: 5, badgeColor: 'bg-yellow-500 text-white', disabled: true },
+  { href: process.env.NEXT_PUBLIC_QUOTATION_TOOL_URL || '#', label: 'Báo Giá', icon: FileText, badge: 5, badgeColor: 'bg-yellow-500 text-white' },
   { href: '/reports', label: 'Báo cáo', icon: BarChart3 },
   { href: '/settings', label: 'Cài đặt', icon: Settings },
 ]
@@ -134,30 +134,57 @@ export default function ProtectedLayout({
                 )
               }
 
+              const isExternal = item.href.startsWith('http')
+
               return (
                 <li key={item.href}>
-                  <Link
-                    href={item.href}
-                    className={cn(
-                      "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors",
-                      isActive
-                        ? "bg-[#2563eb] text-white"
-                        : "text-[#1e293b] hover:bg-[#f1f5f9]"
-                    )}
-                    title={!sidebarOpen ? item.label : undefined}
-                  >
-                    <Icon className="w-5 h-5 flex-shrink-0" />
-                    {sidebarOpen && (
-                      <>
-                        <span className="flex-1">{item.label}</span>
-                        {item.badge && (
-                          <span className={cn("text-xs font-bold px-2 py-0.5 rounded-full", item.badgeColor || "bg-primary")}>
-                            {item.badge}
-                          </span>
-                        )}
-                      </>
-                    )}
-                  </Link>
+                  {isExternal ? (
+                    <a
+                      href={item.href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={cn(
+                        "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors",
+                        "text-[#1e293b] hover:bg-[#f1f5f9]"
+                      )}
+                      title={!sidebarOpen ? item.label : undefined}
+                    >
+                      <Icon className="w-5 h-5 flex-shrink-0" />
+                      {sidebarOpen && (
+                        <>
+                          <span className="flex-1">{item.label}</span>
+                          {item.badge && (
+                            <span className={cn("text-xs font-bold px-2 py-0.5 rounded-full", item.badgeColor || "bg-primary")}>
+                              {item.badge}
+                            </span>
+                          )}
+                        </>
+                      )}
+                    </a>
+                  ) : (
+                    <Link
+                      href={item.href}
+                      className={cn(
+                        "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors",
+                        isActive
+                          ? "bg-[#2563eb] text-white"
+                          : "text-[#1e293b] hover:bg-[#f1f5f9]"
+                      )}
+                      title={!sidebarOpen ? item.label : undefined}
+                    >
+                      <Icon className="w-5 h-5 flex-shrink-0" />
+                      {sidebarOpen && (
+                        <>
+                          <span className="flex-1">{item.label}</span>
+                          {item.badge && (
+                            <span className={cn("text-xs font-bold px-2 py-0.5 rounded-full", item.badgeColor || "bg-primary")}>
+                              {item.badge}
+                            </span>
+                          )}
+                        </>
+                      )}
+                    </Link>
+                  )}
                 </li>
               )
             })}
