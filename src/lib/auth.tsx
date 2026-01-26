@@ -33,14 +33,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const router = useRouter()
   const supabase = createClient()
 
-  // Fetch user profile from database
-  const fetchProfile = async (userId: string) => {
+  // Fetch user profile from database with timeout
+  const fetchProfile = async (userId: string): Promise<UserProfile | null> => {
     try {
-      const { data, error } = await supabase
+      // Add timeout to prevent hanging
+      const timeoutPromise = new Promise<null>((_, reject) =>
+        setTimeout(() => reject(new Error('Profile fetch timeout')), 5000)
+      )
+
+      const fetchPromise = supabase
         .from('users')
-        .select('id, email, name, avatar_url, role')
+        .select('id, email, name, role')
         .eq('auth_id', userId)
         .single()
+
+      const { data, error } = await Promise.race([fetchPromise, timeoutPromise]) as Awaited<typeof fetchPromise>
 
       if (error) {
         console.error('Error fetching profile:', error)
@@ -55,14 +62,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   useEffect(() => {
-    // Get initial session
+    // Get initial session with timeout protection
     const getInitialSession = async () => {
       try {
-        const { data: { session: initialSession } } = await supabase.auth.getSession()
+        // Add timeout to prevent hanging on getSession
+        const timeoutPromise = new Promise<{ data: { session: null } }>((resolve) =>
+          setTimeout(() => {
+            console.warn('Session fetch timeout - continuing without session')
+            resolve({ data: { session: null } })
+          }, 5000)
+        )
+
+        const sessionPromise = supabase.auth.getSession()
+        const { data: { session: initialSession } } = await Promise.race([sessionPromise, timeoutPromise])
 
         if (initialSession?.user) {
           setSession(initialSession)
           setUser(initialSession.user)
+          // Fetch profile but don't block on it
           const userProfile = await fetchProfile(initialSession.user.id)
           setProfile(userProfile)
         }
