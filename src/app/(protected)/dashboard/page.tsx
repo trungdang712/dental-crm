@@ -28,7 +28,16 @@ import {
 import Link from 'next/link'
 import { format } from 'date-fns'
 import { vi } from 'date-fns/locale'
-import type { Lead, Activity, DashboardStats } from '@/lib/types'
+import type { Lead, Activity, DashboardStats, Quotation } from '@/lib/types'
+
+interface PendingQuotation {
+  id: string;
+  quotation_number: string;
+  patient_name: string;
+  total_amount: number;
+  created_at: string;
+  items?: { service_name?: string; service?: { name: string } | { name: string }[] | null }[];
+}
 
 export default function DashboardPage() {
   const [stats, setStats] = useState<DashboardStats | null>(null)
@@ -37,6 +46,7 @@ export default function DashboardPage() {
   const [recentActivities, setRecentActivities] = useState<Activity[]>([])
   const [readyToConvert, setReadyToConvert] = useState<Lead[]>([])
   const [overdueFollowUps, setOverdueFollowUps] = useState<Lead[]>([])
+  const [pendingQuotations, setPendingQuotations] = useState<PendingQuotation[]>([])
   const [loading, setLoading] = useState(true)
 
   const supabase = createClient()
@@ -68,7 +78,8 @@ export default function DashboardPage() {
         recentLeadsResult,
         activitiesResult,
         readyToConvertResult,
-        overdueFollowUpsResult
+        overdueFollowUpsResult,
+        pendingQuotationsResult
       ] = await Promise.all([
         // Total leads
         supabase.from('crm_leads').select('id', { count: 'exact', head: true }),
@@ -129,6 +140,23 @@ export default function DashboardPage() {
           .lt('next_follow_up', today.toISOString())
           .not('status', 'in', '(won,lost)')
           .order('next_follow_up', { ascending: true })
+          .limit(5),
+
+        // Pending quotations (completed status = sent to customer, waiting for response)
+        supabase.from('quotations')
+          .select(`
+            id,
+            quotation_number,
+            patient_name,
+            total_amount,
+            created_at,
+            items:quotation_items(
+              service_name,
+              service:services(name)
+            )
+          `)
+          .eq('status', 'completed')
+          .order('created_at', { ascending: false })
           .limit(5)
       ])
 
@@ -158,6 +186,7 @@ export default function DashboardPage() {
       setRecentActivities(activitiesResult.data || [])
       setReadyToConvert(readyToConvertResult.data || [])
       setOverdueFollowUps(overdueFollowUpsResult.data || [])
+      setPendingQuotations(pendingQuotationsResult.data || [])
     } catch (error) {
       console.error('Error fetching dashboard data:', error)
     } finally {
@@ -367,44 +396,63 @@ export default function DashboardPage() {
                 <CardTitle className="flex items-center gap-2">
                   <FileText className="w-5 h-5 text-yellow-600" />
                   Báo Giá Đang Chờ
-                  <Badge className="bg-yellow-500 text-white">5</Badge>
+                  <Badge className="bg-yellow-500 text-white">{pendingQuotations.length}</Badge>
                 </CardTitle>
-                <Button variant="ghost" size="sm" disabled>
-                  <ExternalLink className="w-4 h-4" />
+                <Button variant="ghost" size="sm" asChild>
+                  <a href={process.env.NEXT_PUBLIC_QUOTATION_TOOL_URL || '#'} target="_blank" rel="noopener noreferrer">
+                    <ExternalLink className="w-4 h-4" />
+                  </a>
                 </Button>
               </div>
             </CardHeader>
             <CardContent>
-              <div className="space-y-3">
-                {[
-                  { id: "BG-2024-0159", customer: "Nguyễn Văn A", service: "Implant Straumann (x2)", value: 145000000, daysSince: 3 },
-                  { id: "BG-2024-0160", customer: "Trần Thị B", service: "Tẩy trắng + Dán sứ Veneer", value: 87500000, daysSince: 1 },
-                  { id: "BG-2024-0161", customer: "Lê Văn C", service: "Niềng răng Invisalign", value: 120000000, daysSince: 5 },
-                ].map((quote) => (
-                  <div key={quote.id} className="flex items-start gap-3 p-3 rounded-lg bg-white border border-border hover:shadow-sm transition-all cursor-pointer">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-start justify-between gap-2">
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <p className="font-medium text-sm">{quote.customer}</p>
-                            <Badge variant="outline" className="text-xs">{quote.id}</Badge>
+              {pendingQuotations.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <FileText className="w-12 h-12 mx-auto mb-3 text-yellow-400" />
+                  <p className="font-medium">Không có báo giá đang chờ</p>
+                  <p className="text-sm">Tất cả báo giá đã được xử lý</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {pendingQuotations.map((quote) => {
+                    const daysSince = Math.floor((new Date().getTime() - new Date(quote.created_at).getTime()) / (1000 * 60 * 60 * 24))
+                    const firstItem = quote.items?.[0]
+                    const serviceObj = firstItem?.service
+                    const serviceName = firstItem?.service_name ||
+                      (Array.isArray(serviceObj) ? serviceObj[0]?.name : serviceObj?.name) ||
+                      'Dịch vụ'
+                    const serviceCount = quote.items?.length || 0
+                    const serviceDisplay = serviceCount > 1 ? `${serviceName} (+${serviceCount - 1})` : serviceName
+                    return (
+                      <a
+                        key={quote.id}
+                        href={`${process.env.NEXT_PUBLIC_QUOTATION_TOOL_URL || ''}/quotations/${quote.id}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-start gap-3 p-3 rounded-lg bg-white border border-border hover:shadow-sm transition-all cursor-pointer block"
+                      >
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-start justify-between gap-2">
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <p className="font-medium text-sm">{quote.patient_name}</p>
+                                <Badge variant="outline" className="text-xs">{quote.quotation_number}</Badge>
+                              </div>
+                              <p className="text-sm text-muted-foreground mt-1">{serviceDisplay}</p>
+                            </div>
+                            <div className="text-right">
+                              <p className="font-semibold text-sm">{((quote.total_amount || 0) / 1000000).toFixed(0)}M VND</p>
+                              <Badge className={`mt-1 ${daysSince >= 5 ? "bg-red-500" : daysSince >= 3 ? "bg-yellow-500" : "bg-green-500"} text-white`}>
+                                {daysSince} ngày
+                              </Badge>
+                            </div>
                           </div>
-                          <p className="text-sm text-muted-foreground mt-1">{quote.service}</p>
                         </div>
-                        <div className="text-right">
-                          <p className="font-semibold text-sm">{(quote.value / 1000000).toFixed(0)}M VND</p>
-                          <Badge className={`mt-1 ${quote.daysSince >= 5 ? "bg-red-500" : quote.daysSince >= 3 ? "bg-yellow-500" : "bg-green-500"} text-white`}>
-                            {quote.daysSince} ngày
-                          </Badge>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <p className="text-xs text-muted-foreground text-center mt-3">
-                Dữ liệu từ Quotation Tool
-              </p>
+                      </a>
+                    )
+                  })}
+                </div>
+              )}
             </CardContent>
           </Card>
 

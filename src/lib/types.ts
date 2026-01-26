@@ -84,6 +84,22 @@ export interface Quotation {
   status: string;
   created_at: string;
   updated_at: string;
+  items?: QuotationItem[];
+}
+
+export interface QuotationItem {
+  id: string;
+  quotation_id: string;
+  service_id: string;
+  service_name?: string;
+  quantity: number;
+  unit_price: number;
+  discount_percent?: number;
+  subtotal: number;
+  service?: {
+    id: string;
+    name: string;
+  };
 }
 
 // Form types
