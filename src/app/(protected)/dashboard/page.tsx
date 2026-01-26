@@ -34,9 +34,12 @@ interface PendingQuotation {
   id: string;
   quotation_number: string;
   patient_name: string;
-  total_amount: number;
   created_at: string;
-  items?: { service_name?: string; service?: { name: string } | { name: string }[] | null }[];
+  items?: {
+    quantity?: number;
+    unit_price_vnd?: number;
+    service?: { name: string } | { name: string }[] | null
+  }[];
 }
 
 export default function DashboardPage() {
@@ -148,10 +151,10 @@ export default function DashboardPage() {
             id,
             quotation_number,
             patient_name,
-            total_amount,
             created_at,
             items:quotation_items(
-              service_name,
+              quantity,
+              unit_price_vnd,
               service:services(name)
             )
           `)
@@ -418,11 +421,13 @@ export default function DashboardPage() {
                     const daysSince = Math.floor((new Date().getTime() - new Date(quote.created_at).getTime()) / (1000 * 60 * 60 * 24))
                     const firstItem = quote.items?.[0]
                     const serviceObj = firstItem?.service
-                    const serviceName = firstItem?.service_name ||
-                      (Array.isArray(serviceObj) ? serviceObj[0]?.name : serviceObj?.name) ||
-                      'Dịch vụ'
+                    const serviceName = (Array.isArray(serviceObj) ? serviceObj[0]?.name : serviceObj?.name) || 'Dịch vụ'
                     const serviceCount = quote.items?.length || 0
                     const serviceDisplay = serviceCount > 1 ? `${serviceName} (+${serviceCount - 1})` : serviceName
+                    // Calculate total from items
+                    const totalAmount = quote.items?.reduce((sum, item) => {
+                      return sum + ((item.quantity || 1) * (item.unit_price_vnd || 0))
+                    }, 0) || 0
                     return (
                       <a
                         key={quote.id}
@@ -435,13 +440,13 @@ export default function DashboardPage() {
                           <div className="flex items-start justify-between gap-2">
                             <div>
                               <div className="flex items-center gap-2">
-                                <p className="font-medium text-sm">{quote.patient_name}</p>
+                                <p className="font-medium text-sm">{quote.patient_name || 'Chưa có tên'}</p>
                                 <Badge variant="outline" className="text-xs">{quote.quotation_number}</Badge>
                               </div>
                               <p className="text-sm text-muted-foreground mt-1">{serviceDisplay}</p>
                             </div>
                             <div className="text-right">
-                              <p className="font-semibold text-sm">{((quote.total_amount || 0) / 1000000).toFixed(0)}M VND</p>
+                              <p className="font-semibold text-sm">{(totalAmount / 1000000).toFixed(0)}M VND</p>
                               <Badge className={`mt-1 ${daysSince >= 5 ? "bg-red-500" : daysSince >= 3 ? "bg-yellow-500" : "bg-green-500"} text-white`}>
                                 {daysSince} ngày
                               </Badge>
