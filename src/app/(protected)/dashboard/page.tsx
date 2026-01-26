@@ -38,6 +38,7 @@ interface PendingQuotation {
   items?: {
     quantity?: number;
     unit_price_vnd?: number;
+    custom_name?: string;
     service?: { name: string } | { name: string }[] | null
   }[];
 }
@@ -155,6 +156,7 @@ export default function DashboardPage() {
             items:quotation_items(
               quantity,
               unit_price_vnd,
+              custom_name,
               service:services(name)
             )
           `)
@@ -421,7 +423,9 @@ export default function DashboardPage() {
                     const daysSince = Math.floor((new Date().getTime() - new Date(quote.created_at).getTime()) / (1000 * 60 * 60 * 24))
                     const firstItem = quote.items?.[0]
                     const serviceObj = firstItem?.service
-                    const serviceName = (Array.isArray(serviceObj) ? serviceObj[0]?.name : serviceObj?.name) || 'Dịch vụ'
+                    const serviceName = firstItem?.custom_name ||
+                      (Array.isArray(serviceObj) ? serviceObj[0]?.name : serviceObj?.name) ||
+                      'Dịch vụ'
                     const serviceCount = quote.items?.length || 0
                     const serviceDisplay = serviceCount > 1 ? `${serviceName} (+${serviceCount - 1})` : serviceName
                     // Calculate total from items
@@ -429,12 +433,9 @@ export default function DashboardPage() {
                       return sum + ((item.quantity || 1) * (item.unit_price_vnd || 0))
                     }, 0) || 0
                     return (
-                      <a
+                      <div
                         key={quote.id}
-                        href={`${process.env.NEXT_PUBLIC_QUOTATION_TOOL_URL || ''}/quotations/${quote.id}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-start gap-3 p-3 rounded-lg bg-white border border-border hover:shadow-sm transition-all cursor-pointer block"
+                        className="flex items-start gap-3 p-3 rounded-lg bg-white border border-border hover:shadow-sm transition-all"
                       >
                         <div className="flex-1 min-w-0">
                           <div className="flex items-start justify-between gap-2">
@@ -453,7 +454,7 @@ export default function DashboardPage() {
                             </div>
                           </div>
                         </div>
-                      </a>
+                      </div>
                     )
                   })}
                 </div>
