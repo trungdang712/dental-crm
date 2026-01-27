@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import React, { useEffect, useState, useCallback, useMemo } from 'react'
 import { DndProvider, useDrag, useDrop } from 'react-dnd'
 import { HTML5Backend } from 'react-dnd-html5-backend'
 import { createClient } from '@/lib/supabase/client'
@@ -42,7 +42,6 @@ import {
   Phone,
   Mail,
   Calendar,
-  DollarSign,
   User,
   Flame,
   Wind,
@@ -59,7 +58,6 @@ import {
   Download,
   Filter,
   MoreHorizontal,
-  CheckSquare,
   X,
   UserPlus,
   ArrowUpDown
@@ -69,17 +67,18 @@ import { toast } from 'sonner'
 import { format } from 'date-fns'
 import { vi } from 'date-fns/locale'
 import type { Lead, LeadStatus, LeadPriority, LeadSource, User as UserType } from '@/lib/types'
+import { formatCurrencyCompact } from '@/lib/format'
 
 const ITEM_TYPE = 'LEAD_CARD'
 
 const statusColumns: { status: LeadStatus; label: string; color: string }[] = [
-  { status: 'new', label: 'Mới', color: '#3b82f6' },
-  { status: 'contacted', label: 'Đã Liên Hệ', color: '#8b5cf6' },
-  { status: 'qualified', label: 'Đủ Điều Kiện', color: '#06b6d4' },
-  { status: 'quoted', label: 'Đã Báo Giá', color: '#f59e0b' },
-  { status: 'negotiating', label: 'Đàm Phán', color: '#f97316' },
-  { status: 'won', label: 'Thành Công', color: '#10b981' },
-  { status: 'lost', label: 'Thất Bại', color: '#6b7280' },
+  { status: 'new', label: 'Mới', color: '#2563eb' },
+  { status: 'contacted', label: 'Đã Liên Hệ', color: '#7c3aed' },
+  { status: 'qualified', label: 'Đủ Điều Kiện', color: '#0891b2' },
+  { status: 'quoted', label: 'Đã Báo Giá', color: '#d97706' },
+  { status: 'negotiating', label: 'Đàm Phán', color: '#ea580c' },
+  { status: 'won', label: 'Thành Công', color: '#059669' },
+  { status: 'lost', label: 'Thất Bại', color: '#4b5563' },
 ]
 
 interface LeadCardProps {
@@ -87,10 +86,12 @@ interface LeadCardProps {
   onClick: () => void
 }
 
-function LeadCard({ lead, onClick }: LeadCardProps) {
+const LeadCard = React.memo(function LeadCard({ lead, onClick }: LeadCardProps) {
+  const dragItem = useMemo(() => ({ id: lead.id, currentStatus: lead.status }), [lead.id, lead.status])
+
   const [{ isDragging }, drag] = useDrag({
     type: ITEM_TYPE,
-    item: { id: lead.id, currentStatus: lead.status },
+    item: dragItem,
     collect: (monitor) => ({
       isDragging: monitor.isDragging(),
     }),
@@ -172,19 +173,20 @@ function LeadCard({ lead, onClick }: LeadCardProps) {
         </div>
       )}
 
-      {/* Interest */}
+      {/* Interest Badge */}
       {lead.interest && (
-        <p className="text-xs text-muted-foreground mb-2 line-clamp-1">
-          {lead.interest}
-        </p>
+        <div className="mb-2">
+          <Badge variant="secondary" className="text-[10px] px-1.5 py-0.5 bg-primary/10 text-primary">
+            {lead.interest}
+          </Badge>
+        </div>
       )}
 
       {/* Value & Assigned */}
       <div className="flex items-center justify-between text-xs mb-2 pb-2 border-b border-border">
         {lead.estimated_value ? (
-          <div className="flex items-center gap-1 font-semibold text-green-600">
-            <DollarSign className="w-3.5 h-3.5" />
-            <span>${lead.estimated_value.toLocaleString()}</span>
+          <div className="flex items-center gap-1 font-bold text-green-600 text-sm">
+            <span>{formatCurrencyCompact(lead.estimated_value)}</span>
           </div>
         ) : (
           <span />
@@ -226,7 +228,20 @@ function LeadCard({ lead, onClick }: LeadCardProps) {
       )}
     </div>
   )
-}
+}, (prevProps, nextProps) => {
+  // Custom comparison for performance - only re-render when lead data actually changes
+  return prevProps.lead.id === nextProps.lead.id &&
+         prevProps.lead.status === nextProps.lead.status &&
+         prevProps.lead.first_name === nextProps.lead.first_name &&
+         prevProps.lead.last_name === nextProps.lead.last_name &&
+         prevProps.lead.phone === nextProps.lead.phone &&
+         prevProps.lead.estimated_value === nextProps.lead.estimated_value &&
+         prevProps.lead.priority === nextProps.lead.priority &&
+         prevProps.lead.interest === nextProps.lead.interest &&
+         prevProps.lead.status_updated_at === nextProps.lead.status_updated_at &&
+         prevProps.lead.next_follow_up === nextProps.lead.next_follow_up &&
+         prevProps.lead.assigned_user?.id === nextProps.lead.assigned_user?.id
+})
 
 interface CollapsedColumnProps {
   status: LeadStatus
@@ -280,7 +295,7 @@ function CollapsedColumn({ status, label, color, leads, onDrop, onExpand }: Coll
           {leads.length}
         </Badge>
         <span className="text-[10px] text-muted-foreground mt-2 writing-mode-vertical" style={{ writingMode: 'vertical-rl' }}>
-          ${(totalValue / 1000).toFixed(0)}k
+          {formatCurrencyCompact(totalValue)}
         </span>
       </div>
     </div>
@@ -326,7 +341,7 @@ function PipelineColumn({ status, label, color, leads, onDrop, onLeadClick, onCo
         {/* Column Header */}
         <div
           className="p-3 border-b border-border"
-          style={{ backgroundColor: color + '20' }}
+          style={{ backgroundColor: color + '40' }}
         >
           <div className="flex items-center justify-between mb-1">
             <h3 className="font-semibold text-foreground flex items-center gap-2">
@@ -350,8 +365,8 @@ function PipelineColumn({ status, label, color, leads, onDrop, onLeadClick, onCo
               </Button>
             )}
           </div>
-          <p className="text-sm text-muted-foreground">
-            ${totalValue.toLocaleString()}
+          <p className="text-sm font-medium text-foreground">
+            {formatCurrencyCompact(totalValue)}
           </p>
         </div>
 
@@ -873,7 +888,10 @@ export default function LeadsPage() {
               <Download className="w-4 h-4 mr-2" />
               Xuất
             </Button>
-            <Button onClick={() => setIsAddModalOpen(true)}>
+            <Button
+              onClick={() => setIsAddModalOpen(true)}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
               <Plus className="w-4 h-4 mr-2" />
               Thêm Lead
             </Button>
@@ -1169,7 +1187,7 @@ export default function LeadsPage() {
                       </td>
                       <td className="p-4" onClick={() => setSelectedLead(lead)}>
                         {lead.estimated_value
-                          ? `$${lead.estimated_value.toLocaleString()}`
+                          ? formatCurrencyCompact(lead.estimated_value)
                           : '-'}
                       </td>
                       <td className="p-4" onClick={() => setSelectedLead(lead)}>{getStatusBadge(lead.status)}</td>
@@ -1254,7 +1272,7 @@ export default function LeadsPage() {
                     <div>
                       <p className="text-muted-foreground">Giá trị ước tính</p>
                       <p className="font-medium">
-                        ${selectedLead.estimated_value.toLocaleString()}
+                        {formatCurrencyCompact(selectedLead.estimated_value)}
                       </p>
                     </div>
                   )}
@@ -1499,7 +1517,7 @@ export default function LeadsPage() {
 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="estimated_value">Giá trị ước tính ($)</Label>
+                    <Label htmlFor="estimated_value">Giá trị ước tính (VND)</Label>
                     <Input
                       id="estimated_value"
                       type="number"
@@ -1778,7 +1796,7 @@ export default function LeadsPage() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="edit_estimated_value">Giá trị ước tính ($)</Label>
+                  <Label htmlFor="edit_estimated_value">Giá trị ước tính (VND)</Label>
                   <Input
                     id="edit_estimated_value"
                     type="number"

@@ -29,6 +29,8 @@ import Link from 'next/link'
 import { format } from 'date-fns'
 import { vi } from 'date-fns/locale'
 import type { Lead, Activity, DashboardStats, Quotation } from '@/lib/types'
+import { formatCurrency } from '@/lib/format'
+import { AddLeadModal } from '@/components/leads/AddLeadModal'
 
 interface PendingQuotation {
   id: string;
@@ -52,6 +54,7 @@ export default function DashboardPage() {
   const [overdueFollowUps, setOverdueFollowUps] = useState<Lead[]>([])
   const [pendingQuotations, setPendingQuotations] = useState<PendingQuotation[]>([])
   const [loading, setLoading] = useState(true)
+  const [isAddLeadModalOpen, setIsAddLeadModalOpen] = useState(false)
 
   const supabase = createClient()
 
@@ -209,14 +212,6 @@ export default function DashboardPage() {
     }
   }
 
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('vi-VN', {
-      style: 'currency',
-      currency: 'USD',
-      maximumFractionDigits: 0
-    }).format(value)
-  }
-
   const getPriorityIcon = (priority: string) => {
     switch (priority) {
       case 'hot':
@@ -274,11 +269,12 @@ export default function DashboardPage() {
             Xin chào! Đây là tình hình CRM của bạn hôm nay.
           </p>
         </div>
-        <Button asChild>
-          <Link href="/leads">
-            <UserPlus className="w-4 h-4 mr-2" />
-            Thêm Lead Mới
-          </Link>
+        <Button
+          onClick={() => setIsAddLeadModalOpen(true)}
+          className="bg-red-600 hover:bg-red-700 text-white"
+        >
+          <UserPlus className="w-4 h-4 mr-2" />
+          Thêm Lead
         </Button>
       </div>
 
@@ -758,6 +754,15 @@ export default function DashboardPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Add Lead Modal */}
+      <AddLeadModal
+        isOpen={isAddLeadModalOpen}
+        onClose={() => setIsAddLeadModalOpen(false)}
+        onSuccess={() => {
+          fetchDashboardData()
+        }}
+      />
     </div>
   )
 }
