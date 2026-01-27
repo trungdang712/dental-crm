@@ -7,6 +7,22 @@ export type ChatChannel = 'zalo' | 'whatsapp' | 'messenger' | 'phone';
 export type Gender = 'male' | 'female' | 'other';
 export type ActivityType = 'call' | 'email' | 'meeting' | 'note' | 'status_change';
 
+// Image types - matching quotation-tool structure
+export type PatientPhotoType = 'front_smile' | 'right_bite' | 'left_bite' | 'upper_occlusal' | 'lower_occlusal';
+export type XrayType = 'opg' | 'cephalometric' | 'periapical' | 'cbct' | 'bitewing';
+
+export interface PatientPhoto {
+  type: PatientPhotoType;
+  url: string;
+  uploadedAt?: string;
+}
+
+export interface XrayPhoto {
+  type: XrayType;
+  url: string;
+  uploadedAt?: string;
+}
+
 export interface User {
   id: string;
   email: string;
@@ -53,6 +69,10 @@ export interface Lead {
 
   // Notes
   notes?: string;
+
+  // Images
+  patient_photos?: PatientPhoto[];
+  xray_photos?: XrayPhoto[];
 
   // Timestamps
   created_at: string;

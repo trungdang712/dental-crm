@@ -59,7 +59,8 @@ import {
 import { toast } from 'sonner'
 import { format } from 'date-fns'
 import { vi } from 'date-fns/locale'
-import type { Lead, Activity, LeadStatus, LeadPriority, ActivityType, User as UserType, Quotation } from '@/lib/types'
+import type { Lead, Activity, LeadStatus, LeadPriority, ActivityType, User as UserType, Quotation, PatientPhoto, XrayPhoto } from '@/lib/types'
+import { LeadImageUpload } from '@/components/leads/LeadImageUpload'
 
 const statusOptions: { value: LeadStatus; label: string; color: string }[] = [
   { value: 'new', label: 'Mới', color: '#3b82f6' },
@@ -802,6 +803,21 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
                   setEditFormData({ ...editFormData, notes: e.target.value })
                 }
                 rows={4}
+              />
+            </div>
+
+            {/* Image Upload Section */}
+            <div className="space-y-2 pt-4 border-t">
+              <Label>Hình ảnh</Label>
+              <LeadImageUpload
+                patientPhotos={editFormData.patient_photos || []}
+                xrayPhotos={editFormData.xray_photos || []}
+                onPatientPhotosChange={(photos) =>
+                  setEditFormData({ ...editFormData, patient_photos: photos })
+                }
+                onXrayPhotosChange={(xrays) =>
+                  setEditFormData({ ...editFormData, xray_photos: xrays })
+                }
               />
             </div>
 
