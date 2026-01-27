@@ -11,6 +11,7 @@ import {
   TrendingUp,
   DollarSign,
   Phone,
+  Mail,
   Loader2,
   Flame,
   Wind,
@@ -766,9 +767,6 @@ export default function DashboardPage() {
       <Card>
         <CardHeader>
           <CardTitle>Hoạt Động Gần Đây</CardTitle>
-          <CardDescription>
-            Lịch sử tương tác với khách hàng
-          </CardDescription>
         </CardHeader>
         <CardContent>
           {recentActivities.length === 0 ? (
@@ -777,23 +775,82 @@ export default function DashboardPage() {
             </p>
           ) : (
             <div className="space-y-4">
-              {recentActivities.map((activity) => (
-                <div key={activity.id} className="flex items-start gap-3">
-                  <div className="w-2 h-2 rounded-full bg-primary mt-2" />
-                  <div className="flex-1">
-                    <p className="font-medium">{activity.title}</p>
-                    {activity.description && (
-                      <p className="text-sm text-muted-foreground">
-                        {activity.description}
-                      </p>
-                    )}
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {format(new Date(activity.created_at), 'dd/MM/yyyy HH:mm', { locale: vi })}
-                      {activity.creator && ` - ${activity.creator.name || activity.creator.email}`}
-                    </p>
+              {recentActivities.map((activity) => {
+                const getActivityIcon = () => {
+                  switch (activity.type) {
+                    case 'call':
+                      return (
+                        <div className="w-8 h-8 rounded-lg bg-purple-100 flex items-center justify-center flex-shrink-0">
+                          <Phone className="w-4 h-4 text-purple-600" />
+                        </div>
+                      )
+                    case 'email':
+                      return (
+                        <div className="w-8 h-8 rounded-lg bg-cyan-100 flex items-center justify-center flex-shrink-0">
+                          <Mail className="w-4 h-4 text-cyan-600" />
+                        </div>
+                      )
+                    case 'meeting':
+                      return (
+                        <div className="w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center flex-shrink-0">
+                          <Users className="w-4 h-4 text-amber-600" />
+                        </div>
+                      )
+                    case 'note':
+                      return (
+                        <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center flex-shrink-0">
+                          <FileText className="w-4 h-4 text-blue-600" />
+                        </div>
+                      )
+                    default:
+                      return (
+                        <div className="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0">
+                          <Clock className="w-4 h-4 text-gray-600" />
+                        </div>
+                      )
+                  }
+                }
+
+                const getTimeAgo = (dateStr: string) => {
+                  const date = new Date(dateStr)
+                  const now = new Date()
+                  const diffMs = now.getTime() - date.getTime()
+                  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
+                  const diffHours = Math.floor(diffMs / (1000 * 60 * 60))
+                  const diffMinutes = Math.floor(diffMs / (1000 * 60))
+
+                  if (diffMinutes < 60) return `${diffMinutes} phút trước`
+                  if (diffHours < 24) return `${diffHours} giờ trước`
+                  if (diffDays === 1) return 'Hôm qua'
+                  if (diffDays < 7) return `${diffDays} ngày trước`
+                  if (diffDays < 30) return `${Math.floor(diffDays / 7)} tuần trước`
+                  return `${Math.floor(diffDays / 30)} tháng trước`
+                }
+
+                return (
+                  <div key={activity.id} className="flex items-start gap-3">
+                    {getActivityIcon()}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1 min-w-0">
+                          <p className="font-semibold text-foreground">{activity.title}</p>
+                          <p className="text-sm text-muted-foreground mt-0.5">
+                            {activity.creator?.name || activity.creator?.email || 'Hệ thống'}
+                          </p>
+                        </div>
+                        <span className="text-xs text-muted-foreground whitespace-nowrap flex-shrink-0">
+                          {getTimeAgo(activity.created_at)}
+                        </span>
+                      </div>
+                      {activity.description && (
+                        <p className="text-sm text-muted-foreground mt-1">
+                          {activity.description}
+                        </p>
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
           )}
         </CardContent>
