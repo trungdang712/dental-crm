@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react'
+import { createContext, useContext, useEffect, useState, useCallback, useRef, ReactNode } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { User, Session } from '@supabase/supabase-js'
 import { useRouter } from 'next/navigation'
@@ -9,7 +9,6 @@ interface UserProfile {
   id: string
   email: string
   name?: string
-  avatar_url?: string
   role?: string
 }
 
@@ -31,76 +30,89 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null)
   const [loading, setLoading] = useState(true)
   const router = useRouter()
-  const supabase = createClient()
 
-  // Fetch user profile from database with timeout
-  const fetchProfile = async (userId: string): Promise<UserProfile | null> => {
+  // Use ref to ensure stable supabase client
+  const supabaseRef = useRef(createClient())
+  const supabase = supabaseRef.current
+
+  // Fetch user profile from database - non-blocking with timeout
+  const fetchProfile = useCallback(async (userId: string): Promise<UserProfile | null> => {
     try {
-      // Add timeout to prevent hanging
-      const timeoutPromise = new Promise<null>((_, reject) =>
-        setTimeout(() => reject(new Error('Profile fetch timeout')), 5000)
-      )
-
       const fetchPromise = supabase
         .from('users')
         .select('id, email, name, role')
         .eq('auth_id', userId)
         .single()
 
-      const { data, error } = await Promise.race([fetchPromise, timeoutPromise]) as Awaited<typeof fetchPromise>
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('Profile fetch timeout')), 5000)
+      )
+
+      const { data, error } = await Promise.race([fetchPromise, timeoutPromise])
 
       if (error) {
-        console.error('Error fetching profile:', error)
+        console.error('Error fetching profile:', error.message)
         return null
       }
 
       return data as UserProfile
     } catch (error) {
-      console.error('Error fetching profile:', error)
+      console.error('Error fetching profile:', error instanceof Error ? error.message : 'Unknown error')
       return null
     }
-  }
+  }, [supabase])
 
   useEffect(() => {
-    // Get initial session with timeout protection
-    const getInitialSession = async () => {
-      try {
-        // Add timeout to prevent hanging on getSession
-        const timeoutPromise = new Promise<{ data: { session: null } }>((resolve) =>
-          setTimeout(() => {
-            console.warn('Session fetch timeout - continuing without session')
-            resolve({ data: { session: null } })
-          }, 5000)
-        )
+    let mounted = true
 
-        const sessionPromise = supabase.auth.getSession()
-        const { data: { session: initialSession } } = await Promise.race([sessionPromise, timeoutPromise])
+    const initAuth = async () => {
+      try {
+        // Get session - this should be fast as it reads from storage
+        const { data: { session: initialSession }, error } = await supabase.auth.getSession()
+
+        if (error) {
+          console.error('Session error:', error.message)
+        }
+
+        if (!mounted) return
 
         if (initialSession?.user) {
           setSession(initialSession)
           setUser(initialSession.user)
-          // Fetch profile but don't block on it
-          const userProfile = await fetchProfile(initialSession.user.id)
-          setProfile(userProfile)
+
+          // Fetch profile in background - don't block loading
+          fetchProfile(initialSession.user.id).then((userProfile) => {
+            if (mounted) {
+              setProfile(userProfile)
+            }
+          })
         }
       } catch (error) {
-        console.error('Error getting session:', error)
+        console.error('Auth init error:', error)
       } finally {
-        setLoading(false)
+        if (mounted) {
+          setLoading(false)
+        }
       }
     }
 
-    getInitialSession()
+    initAuth()
 
     // Listen for auth state changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, currentSession) => {
+        if (!mounted) return
+
         setSession(currentSession)
         setUser(currentSession?.user ?? null)
 
         if (currentSession?.user) {
-          const userProfile = await fetchProfile(currentSession.user.id)
-          setProfile(userProfile)
+          // Fetch profile in background
+          fetchProfile(currentSession.user.id).then((userProfile) => {
+            if (mounted) {
+              setProfile(userProfile)
+            }
+          })
         } else {
           setProfile(null)
         }
@@ -112,11 +124,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     )
 
     return () => {
+      mounted = false
       subscription.unsubscribe()
     }
-  }, [router])
+  }, [supabase, router, fetchProfile])
 
-  const signIn = async (email: string, password: string) => {
+  const signIn = useCallback(async (email: string, password: string) => {
     try {
       const { error } = await supabase.auth.signInWithPassword({
         email,
@@ -133,9 +146,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch (error) {
       return { error: error as Error }
     }
-  }
+  }, [supabase, router])
 
-  const signOut = async () => {
+  const signOut = useCallback(async () => {
     try {
       await supabase.auth.signOut()
       router.push('/login')
@@ -143,15 +156,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch (error) {
       console.error('Error signing out:', error)
     }
-  }
+  }, [supabase, router])
 
-  const refreshSession = async () => {
+  const refreshSession = useCallback(async () => {
     const { data: { session: newSession } } = await supabase.auth.refreshSession()
     if (newSession) {
       setSession(newSession)
       setUser(newSession.user)
     }
-  }
+  }, [supabase])
 
   const value = {
     user,
