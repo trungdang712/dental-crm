@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button'
 import {
   LayoutDashboard,
   Users,
+  UserCircle,
   FileText,
   BarChart3,
   Settings,
@@ -34,6 +35,7 @@ const navItems: NavItem[] = [
   { href: '/dashboard', label: 'Tổng quan', icon: LayoutDashboard },
   { href: '#', label: 'Chat Inbox', icon: MessageSquare, badge: 3, badgeColor: 'bg-red-500 text-white', disabled: true },
   { href: '/leads', label: 'Leads', icon: Users, badge: 12, badgeColor: 'bg-blue-500 text-white' },
+  { href: '/customers', label: 'Khách Hàng', icon: UserCircle },
   { href: process.env.NEXT_PUBLIC_QUOTATION_TOOL_URL || '#', label: 'Báo Giá', icon: FileText, badge: 5, badgeColor: 'bg-yellow-500 text-white' },
   { href: '/reports', label: 'Báo cáo', icon: BarChart3 },
   { href: '/settings', label: 'Cài đặt', icon: Settings },
