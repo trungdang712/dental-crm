@@ -72,7 +72,7 @@ export default function DashboardPage() {
           service:services(name)
         )
       `)
-      .eq('status', 'completed')
+      .eq('status', 'in_progress')
       .order('created_at', { ascending: false })
       .limit(5)
 
@@ -217,7 +217,7 @@ export default function DashboardPage() {
               service:services(name)
             )
           `)
-          .eq('status', 'completed')
+          .eq('status', 'in_progress')
           .order('created_at', { ascending: false })
           .limit(5))
       ])
