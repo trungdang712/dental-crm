@@ -5,7 +5,6 @@ import { useAuth } from '@/lib/auth'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Loader2 } from 'lucide-react'
 
 export default function LoginPage() {
@@ -33,21 +32,22 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader className="text-center">
-          <div className="mx-auto w-12 h-12 bg-primary rounded-lg flex items-center justify-center mb-4">
-            <span className="text-primary-foreground font-bold text-xl">NK</span>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center p-4">
+      <div className="w-full max-w-md">
+        <div className="bg-white rounded-2xl shadow-xl border border-gray-200 p-8">
+          {/* Logo */}
+          <div className="flex flex-col items-center justify-center mb-8">
+            <img
+              src="/assets/greenfield-logo.png"
+              alt="Greenfield Dental"
+              className="h-24 w-auto mb-2"
+            />
+            <p className="text-sm text-gray-600">Quản lý khách hàng tiềm năng</p>
           </div>
-          <CardTitle className="text-2xl">CRM Nha Khoa</CardTitle>
-          <CardDescription>
-            Đăng nhập để quản lý khách hàng tiềm năng
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
+
+          <form onSubmit={handleSubmit} className="space-y-5">
             {error && (
-              <div className="bg-destructive/10 text-destructive text-sm p-3 rounded-lg">
+              <div className="bg-red-50 text-red-600 text-sm p-3 rounded-lg border border-red-200">
                 {error}
               </div>
             )}
@@ -62,6 +62,7 @@ export default function LoginPage() {
                 onChange={(e) => setEmail(e.target.value)}
                 required
                 disabled={isLoading}
+                className="h-11"
               />
             </div>
 
@@ -75,12 +76,13 @@ export default function LoginPage() {
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 disabled={isLoading}
+                className="h-11"
               />
             </div>
 
             <Button
               type="submit"
-              className="w-full"
+              className="w-full h-11 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700"
               disabled={isLoading}
             >
               {isLoading ? (
@@ -93,8 +95,12 @@ export default function LoginPage() {
               )}
             </Button>
           </form>
-        </CardContent>
-      </Card>
+
+          <p className="text-center text-sm text-gray-500 mt-6">
+            Liên hệ admin nếu cần hỗ trợ
+          </p>
+        </div>
+      </div>
     </div>
   )
 }

@@ -33,7 +33,7 @@ export async function GET(request: NextRequest) {
 
     // Fetch quotations from the quotation tool
     const response = await fetch(
-      `${QUOTATION_TOOL_URL}/api/crm/quotations?crm_lead_id=${leadId}`,
+      `${QUOTATION_TOOL_URL}/api/crm?crm_lead_id=${leadId}`,
       {
         headers: {
           'Authorization': `Bearer ${QUOTATION_API_KEY}`,
@@ -104,7 +104,7 @@ export async function POST(request: NextRequest) {
 
     // Push lead data to quotation tool
     const response = await fetch(
-      `${QUOTATION_TOOL_URL}/api/crm/sync`,
+      `${QUOTATION_TOOL_URL}/api/crm`,
       {
         method: 'POST',
         headers: {
