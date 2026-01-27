@@ -23,7 +23,7 @@ export async function GET(
       .from('crm_activities')
       .select(`
         *,
-        creator:users!crm_activities_created_by_fkey(id, name, email, avatar_url)
+        creator:users!crm_activities_created_by_fkey(id, name, email)
       `)
       .eq('lead_id', id)
       .order('created_at', { ascending: false })
@@ -99,7 +99,7 @@ export async function POST(
       })
       .select(`
         *,
-        creator:users!crm_activities_created_by_fkey(id, name, email, avatar_url)
+        creator:users!crm_activities_created_by_fkey(id, name, email)
       `)
       .single()
 

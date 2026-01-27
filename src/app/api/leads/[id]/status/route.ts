@@ -56,7 +56,7 @@ export async function PATCH(
       .from('crm_leads')
       .select(`
         *,
-        assigned_user:users!crm_leads_assigned_to_fkey(id, name, email, avatar_url),
+        assigned_user:users!crm_leads_assigned_to_fkey(id, name, email),
         creator:users!crm_leads_created_by_fkey(id, name, email)
       `)
       .eq('id', id)
