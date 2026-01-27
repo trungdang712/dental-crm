@@ -35,6 +35,7 @@ interface AddLeadModalProps {
 
 export function AddLeadModal({ isOpen, onClose, onSuccess }: AddLeadModalProps) {
   const [users, setUsers] = useState<UserType[]>([])
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [xrayFiles, setXrayFiles] = useState<File[]>([])
   const [patientPhotos, setPatientPhotos] = useState<File[]>([])
@@ -53,31 +54,46 @@ export function AddLeadModal({ isOpen, onClose, onSuccess }: AddLeadModalProps) 
     interest: '',
     estimated_value: '',
     priority: 'warm' as LeadPriority,
-    assigned_to: '',
     notes: '',
-    next_follow_up: '',
   })
 
   const supabase = createClient()
 
   useEffect(() => {
-    const fetchUsers = async () => {
+    const fetchData = async () => {
       try {
-        const { data, error } = await supabase
+        // Get current auth user
+        const { data: { user: authUser } } = await supabase.auth.getUser()
+
+        if (authUser) {
+          // Get current user's ID from users table
+          const { data: currentUser } = await supabase
+            .from('users')
+            .select('id')
+            .eq('auth_id', authUser.id)
+            .single()
+
+          if (currentUser) {
+            setCurrentUserId(currentUser.id)
+          }
+        }
+
+        // Fetch all users for the dropdown (only managers/admins might use this)
+        const { data: usersData, error } = await supabase
           .from('users')
           .select('id, name, email')
           .order('name')
 
-        if (!error && data) {
-          setUsers(data)
+        if (!error && usersData) {
+          setUsers(usersData)
         }
       } catch (error) {
-        console.error('Error fetching users:', error)
+        console.error('Error fetching data:', error)
       }
     }
 
     if (isOpen) {
-      fetchUsers()
+      fetchData()
     }
   }, [isOpen, supabase])
 
@@ -96,9 +112,7 @@ export function AddLeadModal({ isOpen, onClose, onSuccess }: AddLeadModalProps) 
       interest: '',
       estimated_value: '',
       priority: 'warm',
-      assigned_to: '',
       notes: '',
-      next_follow_up: '',
     })
     setXrayFiles([])
     setPatientPhotos([])
@@ -109,18 +123,30 @@ export function AddLeadModal({ isOpen, onClose, onSuccess }: AddLeadModalProps) 
     setIsSubmitting(true)
 
     try {
+      // Clean up data - convert empty strings to null for optional fields
+      const cleanData = {
+        first_name: formData.first_name,
+        last_name: formData.last_name,
+        phone: formData.phone,
+        email: formData.email || null,
+        date_of_birth: formData.date_of_birth || null,
+        gender: formData.gender || null,
+        country: formData.country || null,
+        address: formData.address || null,
+        source: formData.source || null,
+        source_detail: formData.source_detail || null,
+        interest: formData.interest || null,
+        estimated_value: formData.estimated_value ? parseFloat(formData.estimated_value) : null,
+        priority: formData.priority,
+        notes: formData.notes || null,
+        // Auto-assign to current user
+        assigned_to: currentUserId,
+      }
+
       const response = await fetch('/api/leads', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...formData,
-          estimated_value: formData.estimated_value
-            ? parseFloat(formData.estimated_value)
-            : null,
-          source: formData.source || null,
-          assigned_to: formData.assigned_to || null,
-          next_follow_up: formData.next_follow_up || null,
-        }),
+        body: JSON.stringify(cleanData),
       })
 
       if (response.ok) {
@@ -338,50 +364,16 @@ export function AddLeadModal({ isOpen, onClose, onSuccess }: AddLeadModalProps) 
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="estimated_value">Giá trị ước tính (VND)</Label>
-                <Input
-                  id="estimated_value"
-                  type="number"
-                  value={formData.estimated_value}
-                  onChange={(e) =>
-                    setFormData({ ...formData, estimated_value: e.target.value })
-                  }
-                  placeholder="VD: 15000000"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="assigned_to">Phân công cho</Label>
-                <Select
-                  value={formData.assigned_to}
-                  onValueChange={(value) =>
-                    setFormData({ ...formData, assigned_to: value })
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Chọn nhân viên" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {users.map((user) => (
-                      <SelectItem key={user.id} value={user.id}>
-                        {user.name || user.email}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
             <div className="space-y-2">
-              <Label htmlFor="next_follow_up">Lịch follow-up</Label>
+              <Label htmlFor="estimated_value">Giá trị ước tính (VND)</Label>
               <Input
-                id="next_follow_up"
-                type="datetime-local"
-                value={formData.next_follow_up}
+                id="estimated_value"
+                type="number"
+                value={formData.estimated_value}
                 onChange={(e) =>
-                  setFormData({ ...formData, next_follow_up: e.target.value })
+                  setFormData({ ...formData, estimated_value: e.target.value })
                 }
+                placeholder="VD: 15000000"
               />
             </div>
 
