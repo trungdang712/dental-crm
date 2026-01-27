@@ -207,16 +207,16 @@ const LeadCard = React.memo(function LeadCard({ lead, onClick }: LeadCardProps) 
         )}
       </div>
 
-      {/* Quick Actions - 5 buttons */}
-      <div className="grid grid-cols-5 gap-1 mb-2">
+      {/* Quick Actions - 4 buttons */}
+      <div className="grid grid-cols-4 gap-1 mb-2">
         <Button size="sm" variant="ghost" className="h-7 px-1" title="Gọi điện" onClick={(e) => e.stopPropagation()}>
-          <Phone className="w-3.5 h-3.5" />
+          <Phone className="w-3 h-3" />
         </Button>
         <Button size="sm" variant="ghost" className="h-7 px-1" title="Email" onClick={(e) => e.stopPropagation()}>
-          <Mail className="w-3.5 h-3.5" />
+          <Mail className="w-3 h-3" />
         </Button>
         <Button size="sm" variant="ghost" className="h-7 px-1" title="Chat" onClick={(e) => e.stopPropagation()} disabled={!lead.chat_channel}>
-          <MessageSquare className="w-3.5 h-3.5" />
+          <MessageSquare className="w-3 h-3" />
         </Button>
         <Button
           size="sm"
@@ -236,18 +236,17 @@ const LeadCard = React.memo(function LeadCard({ lead, onClick }: LeadCardProps) 
             window.open(`${quotationUrl}/quotations/new?${params.toString()}`, '_blank')
           }}
         >
-          <FileText className="w-3.5 h-3.5" />
-        </Button>
-        <Button size="sm" variant="ghost" className="h-7 px-1" title="Chi tiết" onClick={(e) => { e.stopPropagation(); onClick() }}>
-          <User className="w-3.5 h-3.5" />
+          <FileText className="w-3 h-3" />
         </Button>
       </div>
 
       {/* Next Follow-up */}
       {lead.next_follow_up && (
-        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-          <Calendar className="w-3.5 h-3.5 text-primary" />
-          <span>{format(new Date(lead.next_follow_up), 'd \'thg\' M', { locale: vi })}</span>
+        <div className="flex items-center gap-1 mt-2 pt-2 border-t border-border">
+          <Calendar className="w-3 h-3 text-amber-500" />
+          <span className="text-[10px] text-muted-foreground">
+            <span className="font-medium text-foreground">{format(new Date(lead.next_follow_up), 'd \'thg\' M', { locale: vi })}</span>
+          </span>
         </div>
       )}
     </div>
@@ -1161,13 +1160,7 @@ export default function LeadsPage() {
                     </th>
                     <th className="text-left px-4 py-3 text-sm font-semibold text-foreground">
                       <button className="flex items-center gap-1 hover:text-primary transition-colors">
-                        Quan tâm
-                        <ArrowUpDown className="w-3 h-3" />
-                      </button>
-                    </th>
-                    <th className="text-left px-4 py-3 text-sm font-semibold text-foreground">
-                      <button className="flex items-center gap-1 hover:text-primary transition-colors">
-                        Giá trị
+                        Nguồn
                         <ArrowUpDown className="w-3 h-3" />
                       </button>
                     </th>
@@ -1182,9 +1175,18 @@ export default function LeadsPage() {
                     </th>
                     <th className="text-left px-4 py-3 text-sm font-semibold text-foreground">
                       <button className="flex items-center gap-1 hover:text-primary transition-colors">
-                        Ngày tạo
+                        Liên hệ cuối
                         <ArrowUpDown className="w-3 h-3" />
                       </button>
+                    </th>
+                    <th className="text-left px-4 py-3 text-sm font-semibold text-foreground">
+                      <button className="flex items-center gap-1 hover:text-primary transition-colors">
+                        Giá trị
+                        <ArrowUpDown className="w-3 h-3" />
+                      </button>
+                    </th>
+                    <th className="text-left px-4 py-3 text-sm font-semibold text-foreground">
+                      Theo dõi tiếp
                     </th>
                     <th className="text-left px-4 py-3 text-sm font-semibold text-foreground">
                       Hành động
@@ -1227,11 +1229,11 @@ export default function LeadsPage() {
                                 {lead.first_name} {lead.last_name}
                               </span>
                             </div>
-                            <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
+                            <div className="flex items-center gap-3 text-xs text-muted-foreground mt-0.5">
                               <span>{lead.phone}</span>
                               {lead.email && (
                                 <>
-                                  <span>-</span>
+                                  <span>•</span>
                                   <span>{lead.email}</span>
                                 </>
                               )}
@@ -1239,15 +1241,15 @@ export default function LeadsPage() {
                           </div>
                         </div>
                       </td>
-                      <td className="px-4 py-4 text-muted-foreground" onClick={() => setSelectedLead(lead)}>
-                        {lead.interest || '-'}
-                      </td>
                       <td className="px-4 py-4" onClick={() => setSelectedLead(lead)}>
-                        <span className="font-semibold">
-                          {lead.estimated_value
-                            ? formatCurrencyCompact(lead.estimated_value)
-                            : '-'}
-                        </span>
+                        <Badge variant="outline" className="text-xs">
+                          {lead.source === 'facebook' ? 'Facebook' :
+                           lead.source === 'google' ? 'Google' :
+                           lead.source === 'referral' ? 'Giới thiệu' :
+                           lead.source === 'walkin' ? 'Vãng lai' :
+                           lead.source === 'website' ? 'Website' :
+                           lead.source || '-'}
+                        </Badge>
                       </td>
                       <td className="px-4 py-4" onClick={() => setSelectedLead(lead)}>{getStatusBadge(lead.status)}</td>
                       <td className="px-4 py-4" onClick={() => setSelectedLead(lead)}>
@@ -1267,9 +1269,21 @@ export default function LeadsPage() {
                         )}
                       </td>
                       <td className="px-4 py-4 text-muted-foreground" onClick={() => setSelectedLead(lead)}>
-                        {format(new Date(lead.created_at), 'dd/MM/yyyy', {
-                          locale: vi,
-                        })}
+                        {lead.last_contact
+                          ? format(new Date(lead.last_contact), 'dd/MM/yyyy', { locale: vi })
+                          : '-'}
+                      </td>
+                      <td className="px-4 py-4" onClick={() => setSelectedLead(lead)}>
+                        <span className="font-semibold">
+                          {lead.estimated_value
+                            ? formatCurrencyCompact(lead.estimated_value)
+                            : '-'}
+                        </span>
+                      </td>
+                      <td className="px-4 py-4 text-muted-foreground" onClick={() => setSelectedLead(lead)}>
+                        {lead.next_follow_up
+                          ? format(new Date(lead.next_follow_up), 'dd/MM/yyyy', { locale: vi })
+                          : '-'}
                       </td>
                       <td className="px-4 py-4" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
