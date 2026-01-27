@@ -61,16 +61,16 @@ export function LeadImageUpload({
     try {
       const fileExt = file.name.split('.').pop()
       const fileName = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}.${fileExt}`
-      const filePath = `lead-images/${category}/${fileName}`
+      const filePath = `${category}/${fileName}`
 
       const { error: uploadError } = await supabase.storage
-        .from('crm-files')
+        .from('quotation-images')
         .upload(filePath, file)
 
       if (uploadError) throw uploadError
 
       const { data: { publicUrl } } = supabase.storage
-        .from('crm-files')
+        .from('quotation-images')
         .getPublicUrl(filePath)
 
       if (category === 'photo') {
