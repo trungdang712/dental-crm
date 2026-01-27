@@ -15,6 +15,7 @@ import {
   Flame,
   Wind,
   Snowflake,
+  MessageSquare,
   FileText,
   Clock,
   ExternalLink,
@@ -392,6 +393,57 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left Column - Main Widgets */}
         <div className="lg:col-span-2 space-y-6">
+          {/* Chat Inbox Widget */}
+          <Card className="border-red-200 bg-red-50/50">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle className="flex items-center gap-2">
+                  <MessageSquare className="w-5 h-5 text-red-600" />
+                  Chat Inbox
+                  <Badge className="bg-red-500 text-white">3</Badge>
+                </CardTitle>
+                <Button variant="ghost" size="sm" disabled>
+                  <ExternalLink className="w-4 h-4" />
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {[
+                  { id: 1, customer: "Phạm Thị Mai", channel: "Zalo", message: "Tôi muốn tư vấn về implant răng...", time: "10 phút trước", unread: 2 },
+                  { id: 2, customer: "Trần Văn Dũng", channel: "WhatsApp", message: "Báo giá dán sứ veneer bao nhiêu?", time: "1 giờ trước", unread: 1 },
+                  { id: 3, customer: "Nguyễn Thị Lan", channel: "Messenger", message: "Phòng khám có làm việc ngày chủ nhật không?", time: "2 giờ trước", unread: 1 },
+                ].map((chat) => (
+                  <div key={chat.id} className="flex items-start gap-3 p-3 rounded-lg bg-white border border-border hover:shadow-sm transition-all cursor-pointer">
+                    <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                      <span className="text-primary text-sm font-semibold">
+                        {chat.customer.split(" ").map(n => n[0]).join("").slice(0, 2)}
+                      </span>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2">
+                            <p className="font-medium text-sm">{chat.customer}</p>
+                            <Badge variant="outline" className="text-xs">{chat.channel}</Badge>
+                          </div>
+                          <p className="text-sm text-muted-foreground line-clamp-1 mt-1">&quot;{chat.message}&quot;</p>
+                          <p className="text-xs text-muted-foreground mt-1">{chat.time}</p>
+                        </div>
+                        {chat.unread > 0 && (
+                          <Badge className="bg-red-500 text-white">{chat.unread}</Badge>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <p className="text-xs text-muted-foreground text-center mt-3">
+                Chat Tool sẽ được tích hợp sớm
+              </p>
+            </CardContent>
+          </Card>
+
           {/* Pending Quotations Widget */}
           <Card className="border-yellow-200 bg-yellow-50/50">
             <CardHeader>
