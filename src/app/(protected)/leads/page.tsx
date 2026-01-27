@@ -1145,122 +1145,192 @@ export default function LeadsPage() {
           <Card>
             <div className="overflow-x-auto">
               <table className="w-full">
-                <thead>
+                <thead className="bg-muted/50">
                   <tr className="border-b border-border">
-                    <th className="w-12 p-4">
+                    <th className="w-12 px-4 py-3">
                       <Checkbox
                         checked={selectedLeadIds.size === filteredLeads.length && filteredLeads.length > 0}
                         onCheckedChange={toggleSelectAll}
                       />
                     </th>
-                    <th className="text-left p-4 font-medium text-muted-foreground">
-                      Tên
+                    <th className="text-left px-4 py-3 text-sm font-semibold text-foreground">
+                      <button className="flex items-center gap-1 hover:text-primary transition-colors">
+                        Tên & Liên Hệ
+                        <ArrowUpDown className="w-3 h-3" />
+                      </button>
                     </th>
-                    <th className="text-left p-4 font-medium text-muted-foreground">
-                      SĐT
+                    <th className="text-left px-4 py-3 text-sm font-semibold text-foreground">
+                      <button className="flex items-center gap-1 hover:text-primary transition-colors">
+                        Quan tâm
+                        <ArrowUpDown className="w-3 h-3" />
+                      </button>
                     </th>
-                    <th className="text-left p-4 font-medium text-muted-foreground">
-                      Quan tâm
+                    <th className="text-left px-4 py-3 text-sm font-semibold text-foreground">
+                      <button className="flex items-center gap-1 hover:text-primary transition-colors">
+                        Giá trị
+                        <ArrowUpDown className="w-3 h-3" />
+                      </button>
                     </th>
-                    <th className="text-left p-4 font-medium text-muted-foreground">
-                      Giá trị
+                    <th className="text-left px-4 py-3 text-sm font-semibold text-foreground">
+                      <button className="flex items-center gap-1 hover:text-primary transition-colors">
+                        Trạng thái
+                        <ArrowUpDown className="w-3 h-3" />
+                      </button>
                     </th>
-                    <th className="text-left p-4 font-medium text-muted-foreground">
-                      Trạng thái
-                    </th>
-                    <th className="text-left p-4 font-medium text-muted-foreground">
+                    <th className="text-left px-4 py-3 text-sm font-semibold text-foreground">
                       Phụ trách
                     </th>
-                    <th className="text-left p-4 font-medium text-muted-foreground">
-                      Ngày tạo
+                    <th className="text-left px-4 py-3 text-sm font-semibold text-foreground">
+                      <button className="flex items-center gap-1 hover:text-primary transition-colors">
+                        Ngày tạo
+                        <ArrowUpDown className="w-3 h-3" />
+                      </button>
                     </th>
-                    <th className="w-12 p-4"></th>
+                    <th className="text-left px-4 py-3 text-sm font-semibold text-foreground">
+                      Hành động
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredLeads.map((lead) => (
                     <tr
                       key={lead.id}
-                      className={`border-b border-border hover:bg-muted/50 cursor-pointer ${
+                      className={`border-b border-border hover:bg-muted/30 cursor-pointer transition-colors group ${
                         selectedLeadIds.has(lead.id) ? 'bg-primary/5' : ''
                       }`}
                     >
-                      <td className="p-4" onClick={(e) => e.stopPropagation()}>
+                      <td className="px-4 py-4" onClick={(e) => e.stopPropagation()}>
                         <Checkbox
                           checked={selectedLeadIds.has(lead.id)}
                           onCheckedChange={() => toggleLeadSelection(lead.id)}
                         />
                       </td>
-                      <td className="p-4" onClick={() => setSelectedLead(lead)}>
-                        <div className="flex items-center gap-2">
-                          {lead.priority === 'hot' && (
-                            <Flame className="w-4 h-4 text-red-500" />
-                          )}
-                          {lead.priority === 'warm' && (
-                            <Wind className="w-4 h-4 text-orange-500" />
-                          )}
-                          {lead.priority === 'cold' && (
-                            <Snowflake className="w-4 h-4 text-blue-500" />
-                          )}
-                          <span className="font-medium">
-                            {lead.first_name} {lead.last_name}
-                          </span>
+                      <td className="px-4 py-4" onClick={() => setSelectedLead(lead)}>
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                            <span className="text-primary text-sm font-semibold">
+                              {lead.first_name?.[0]}{lead.last_name?.[0]}
+                            </span>
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              {lead.priority === 'hot' && (
+                                <Flame className="w-3.5 h-3.5 text-red-500" />
+                              )}
+                              {lead.priority === 'warm' && (
+                                <Wind className="w-3.5 h-3.5 text-orange-500" />
+                              )}
+                              {lead.priority === 'cold' && (
+                                <Snowflake className="w-3.5 h-3.5 text-blue-500" />
+                              )}
+                              <span className="font-medium text-foreground">
+                                {lead.first_name} {lead.last_name}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
+                              <span>{lead.phone}</span>
+                              {lead.email && (
+                                <>
+                                  <span>-</span>
+                                  <span>{lead.email}</span>
+                                </>
+                              )}
+                            </div>
+                          </div>
                         </div>
                       </td>
-                      <td className="p-4" onClick={() => setSelectedLead(lead)}>{lead.phone}</td>
-                      <td className="p-4 text-muted-foreground" onClick={() => setSelectedLead(lead)}>
+                      <td className="px-4 py-4 text-muted-foreground" onClick={() => setSelectedLead(lead)}>
                         {lead.interest || '-'}
                       </td>
-                      <td className="p-4" onClick={() => setSelectedLead(lead)}>
-                        {lead.estimated_value
-                          ? formatCurrencyCompact(lead.estimated_value)
-                          : '-'}
+                      <td className="px-4 py-4" onClick={() => setSelectedLead(lead)}>
+                        <span className="font-semibold">
+                          {lead.estimated_value
+                            ? formatCurrencyCompact(lead.estimated_value)
+                            : '-'}
+                        </span>
                       </td>
-                      <td className="p-4" onClick={() => setSelectedLead(lead)}>{getStatusBadge(lead.status)}</td>
-                      <td className="p-4 text-muted-foreground" onClick={() => setSelectedLead(lead)}>
-                        {lead.assigned_user?.name || '-'}
+                      <td className="px-4 py-4" onClick={() => setSelectedLead(lead)}>{getStatusBadge(lead.status)}</td>
+                      <td className="px-4 py-4" onClick={() => setSelectedLead(lead)}>
+                        {lead.assigned_user ? (
+                          <div className="flex items-center gap-2">
+                            <div className="w-6 h-6 rounded-full bg-muted flex items-center justify-center">
+                              <span className="text-xs font-medium text-muted-foreground">
+                                {lead.assigned_user.name?.[0] || lead.assigned_user.email?.[0]}
+                              </span>
+                            </div>
+                            <span className="text-sm text-muted-foreground">
+                              {lead.assigned_user.name || lead.assigned_user.email}
+                            </span>
+                          </div>
+                        ) : (
+                          <span className="text-muted-foreground">-</span>
+                        )}
                       </td>
-                      <td className="p-4 text-muted-foreground" onClick={() => setSelectedLead(lead)}>
+                      <td className="px-4 py-4 text-muted-foreground" onClick={() => setSelectedLead(lead)}>
                         {format(new Date(lead.created_at), 'dd/MM/yyyy', {
                           locale: vi,
                         })}
                       </td>
-                      <td className="p-4" onClick={(e) => e.stopPropagation()}>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-8 w-8">
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => setSelectedLead(lead)}>
-                              Xem chi tiết
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => openEditModal(lead)}>
-                              <Edit className="w-4 h-4 mr-2" />
-                              Chỉnh sửa
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem
-                              className="text-destructive"
-                              onClick={() => handleDeleteLead(lead.id)}
-                            >
-                              <Trash2 className="w-4 h-4 mr-2" />
-                              Xóa
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                      <td className="px-4 py-4" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <Button size="sm" variant="ghost" className="h-8 w-8 p-0" title="Gọi điện">
+                            <Phone className="w-3.5 h-3.5" />
+                          </Button>
+                          <Button size="sm" variant="ghost" className="h-8 w-8 p-0" title="Email">
+                            <Mail className="w-3.5 h-3.5" />
+                          </Button>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-8 w-8">
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => setSelectedLead(lead)}>
+                                Xem chi tiết
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => openEditModal(lead)}>
+                                <Edit className="w-4 h-4 mr-2" />
+                                Chỉnh sửa
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                className="text-destructive"
+                                onClick={() => handleDeleteLead(lead.id)}
+                              >
+                                <Trash2 className="w-4 h-4 mr-2" />
+                                Xóa
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
                       </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
               {filteredLeads.length === 0 && (
-                <div className="text-center py-8 text-muted-foreground">
-                  Không tìm thấy lead nào
+                <div className="text-center py-12 text-muted-foreground">
+                  <Search className="w-12 h-12 mx-auto mb-3 text-muted-foreground/30" />
+                  <p className="font-medium">Không tìm thấy lead nào</p>
+                  <p className="text-sm mt-1">Thử thay đổi bộ lọc hoặc thêm lead mới</p>
                 </div>
               )}
             </div>
+
+            {/* Pagination */}
+            {filteredLeads.length > 0 && (
+              <div className="flex items-center justify-between px-4 py-3 border-t border-border">
+                <p className="text-sm text-muted-foreground">
+                  Hiển thị <span className="font-medium">{filteredLeads.length}</span> trong số{" "}
+                  <span className="font-medium">{leads.length}</span> khách hàng
+                </p>
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm" disabled>Trước</Button>
+                  <Button variant="outline" size="sm" disabled>Sau</Button>
+                </div>
+              </div>
+            )}
           </Card>
         )}
 

@@ -1,51 +1,54 @@
 @import "tailwindcss";
 
 @theme inline {
-  /* Colors - Light Mode */
-  --color-background: hsl(0 0% 100%);
-  --color-foreground: hsl(224 71.4% 4.1%);
+  /* Typography */
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 
-  --color-card: hsl(0 0% 100%);
-  --color-card-foreground: hsl(224 71.4% 4.1%);
+  /* Colors - Light Mode (Matching Design System) */
+  --color-background: #ffffff;
+  --color-foreground: #0f172a;
 
-  --color-popover: hsl(0 0% 100%);
-  --color-popover-foreground: hsl(224 71.4% 4.1%);
+  --color-card: #ffffff;
+  --color-card-foreground: #0f172a;
 
-  --color-primary: hsl(220.9 39.3% 11%);
-  --color-primary-foreground: hsl(210 20% 98%);
+  --color-popover: #ffffff;
+  --color-popover-foreground: #0f172a;
 
-  --color-secondary: hsl(220 14.3% 95.9%);
-  --color-secondary-foreground: hsl(220.9 39.3% 11%);
+  /* Primary - Blue */
+  --color-primary: #2563eb;
+  --color-primary-foreground: #ffffff;
 
-  --color-muted: hsl(220 14.3% 95.9%);
-  --color-muted-foreground: hsl(220 8.9% 46.1%);
+  /* Secondary - Emerald */
+  --color-secondary: #10b981;
+  --color-secondary-foreground: #ffffff;
 
-  --color-accent: hsl(220 14.3% 95.9%);
-  --color-accent-foreground: hsl(220.9 39.3% 11%);
+  /* Muted */
+  --color-muted: #f1f5f9;
+  --color-muted-foreground: #64748b;
 
-  --color-destructive: hsl(0 84.2% 60.2%);
-  --color-destructive-foreground: hsl(210 20% 98%);
+  /* Accent - Amber */
+  --color-accent: #f59e0b;
+  --color-accent-foreground: #ffffff;
 
-  --color-border: hsl(220 13% 91%);
-  --color-input: hsl(220 13% 91%);
-  --color-ring: hsl(224 71.4% 4.1%);
+  /* Destructive - Red */
+  --color-destructive: #ef4444;
+  --color-destructive-foreground: #ffffff;
+
+  /* Borders & Inputs */
+  --color-border: #e2e8f0;
+  --color-input: transparent;
+  --color-input-background: #f8fafc;
+  --color-ring: #2563eb;
 
   /* Chart colors */
-  --color-chart-1: hsl(12 76% 61%);
-  --color-chart-2: hsl(173 58% 39%);
-  --color-chart-3: hsl(197 37% 24%);
-  --color-chart-4: hsl(43 74% 66%);
-  --color-chart-5: hsl(27 87% 67%);
+  --color-chart-1: #2563eb;
+  --color-chart-2: #10b981;
+  --color-chart-3: #f59e0b;
+  --color-chart-4: #8b5cf6;
+  --color-chart-5: #ec4899;
 
-  /* Status colors */
-  --color-success: hsl(142 76% 36%);
-  --color-success-foreground: hsl(0 0% 100%);
-  --color-warning: hsl(38 92% 50%);
-  --color-warning-foreground: hsl(0 0% 100%);
-  --color-info: hsl(199 89% 48%);
-  --color-info-foreground: hsl(0 0% 100%);
-
-  /* Lead status colors */
+  /* Status colors - Dental CRM */
   --color-status-new: #3b82f6;
   --color-status-new-bg: #dbeafe;
   --color-status-contacted: #8b5cf6;
@@ -69,32 +72,29 @@
   --color-priority-cold: #3b82f6;
   --color-priority-cold-bg: #dbeafe;
 
-  /* Radius */
-  --radius: 0.5rem;
+  /* Radius - Increased for more modern look */
+  --radius: 0.75rem;
 
-  /* Fonts */
-  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
-  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+  /* Success/Warning/Info */
+  --color-success: #10b981;
+  --color-success-foreground: #ffffff;
+  --color-warning: #f59e0b;
+  --color-warning-foreground: #ffffff;
+  --color-info: #3b82f6;
+  --color-info-foreground: #ffffff;
 }
 
 /* Sidebar styles */
 @theme inline {
-  --color-sidebar-background: hsl(0 0% 100%);
-  --color-sidebar-foreground: hsl(240 5.3% 26.1%);
-  --color-sidebar-primary: hsl(240 5.9% 10%);
-  --color-sidebar-primary-foreground: hsl(0 0% 98%);
-  --color-sidebar-accent: hsl(240 4.8% 95.9%);
-  --color-sidebar-accent-foreground: hsl(240 5.9% 10%);
-  --color-sidebar-border: hsl(220 13% 91%);
-  --color-sidebar-ring: hsl(217.2 91.2% 59.8%);
+  --color-sidebar-background: #f8fafc;
+  --color-sidebar-foreground: #1e293b;
+  --color-sidebar-primary: #2563eb;
+  --color-sidebar-primary-foreground: #ffffff;
+  --color-sidebar-accent: #f1f5f9;
+  --color-sidebar-accent-foreground: #1e293b;
+  --color-sidebar-border: #e2e8f0;
+  --color-sidebar-ring: #2563eb;
 }
-
-/* Dark mode disabled - Force light theme */
-/*
-@media (prefers-color-scheme: dark) {
-  - disabled to force light theme
-}
-*/
 
 /* Base styles */
 * {
@@ -105,6 +105,36 @@ body {
   background-color: var(--color-background);
   color: var(--color-foreground);
   font-family: var(--font-sans);
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Typography base styles */
+h1 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  line-height: 1.4;
+  letter-spacing: -0.025em;
+}
+
+h2 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  line-height: 1.4;
+  letter-spacing: -0.02em;
+}
+
+h3 {
+  font-size: 1.125rem;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+h4 {
+  font-size: 1rem;
+  font-weight: 500;
+  line-height: 1.5;
 }
 
 /* Scrollbar styles */
@@ -118,12 +148,12 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: hsl(220 13% 80%);
+  background: #cbd5e1;
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: hsl(220 13% 70%);
+  background: #94a3b8;
 }
 
 /* Custom animations */
@@ -143,10 +173,37 @@ body {
   }
 }
 
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 .animate-fadeIn {
   animation: fadeIn 0.2s ease-out;
 }
 
 .animate-slideIn {
   animation: slideIn 0.2s ease-out;
+}
+
+.animate-slideUp {
+  animation: slideUp 0.2s ease-out;
+}
+
+/* Focus styles */
+*:focus-visible {
+  outline: 2px solid var(--color-ring);
+  outline-offset: 2px;
+}
+
+/* Selection styles */
+::selection {
+  background-color: var(--color-primary);
+  color: var(--color-primary-foreground);
 }
