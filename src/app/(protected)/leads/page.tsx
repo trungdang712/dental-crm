@@ -212,7 +212,24 @@ const LeadCard = React.memo(function LeadCard({ lead, onClick }: LeadCardProps) 
         <Button size="sm" variant="ghost" className="h-7 px-1" title="Chat" onClick={(e) => e.stopPropagation()} disabled>
           <MessageSquare className="w-3 h-3" />
         </Button>
-        <Button size="sm" variant="ghost" className="h-7 px-1" title="Tạo báo giá" onClick={(e) => e.stopPropagation()}>
+        <Button
+          size="sm"
+          variant="ghost"
+          className="h-7 px-1 text-primary hover:text-primary hover:bg-primary/10"
+          title="Tạo báo giá"
+          onClick={(e) => {
+            e.stopPropagation()
+            const quotationUrl = process.env.NEXT_PUBLIC_QUOTATION_TOOL_URL || 'https://baogia.greenfield.clinic'
+            const params = new URLSearchParams({
+              crm_lead_id: lead.id,
+              customer_name: `${lead.first_name} ${lead.last_name}`.trim(),
+              customer_phone: lead.phone || '',
+              customer_email: lead.email || '',
+              customer_country: lead.country || 'VN',
+            })
+            window.open(`${quotationUrl}/quotations/new?${params.toString()}`, '_blank')
+          }}
+        >
           <FileText className="w-3 h-3" />
         </Button>
       </div>
@@ -235,6 +252,8 @@ const LeadCard = React.memo(function LeadCard({ lead, onClick }: LeadCardProps) 
          prevProps.lead.first_name === nextProps.lead.first_name &&
          prevProps.lead.last_name === nextProps.lead.last_name &&
          prevProps.lead.phone === nextProps.lead.phone &&
+         prevProps.lead.email === nextProps.lead.email &&
+         prevProps.lead.country === nextProps.lead.country &&
          prevProps.lead.estimated_value === nextProps.lead.estimated_value &&
          prevProps.lead.priority === nextProps.lead.priority &&
          prevProps.lead.interest === nextProps.lead.interest &&
