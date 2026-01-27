@@ -124,6 +124,22 @@ const LeadCard = React.memo(function LeadCard({ lead, onClick }: LeadCardProps) 
     }
   }
 
+  const getChannelBadge = (channel?: string) => {
+    if (!channel) return null
+    const badges: Record<string, { label: string; color: string }> = {
+      zalo: { label: 'Zalo', color: 'bg-blue-500' },
+      whatsapp: { label: 'WhatsApp', color: 'bg-green-500' },
+      messenger: { label: 'MSG', color: 'bg-purple-500' },
+      phone: { label: 'Phone', color: 'bg-gray-500' },
+    }
+    const badge = badges[channel] || { label: channel, color: 'bg-gray-500' }
+    return (
+      <Badge className={`${badge.color} text-white text-[10px] px-1.5 py-0 font-medium`}>
+        {badge.label}
+      </Badge>
+    )
+  }
+
   return (
     <div
       ref={dragRef}
@@ -132,10 +148,11 @@ const LeadCard = React.memo(function LeadCard({ lead, onClick }: LeadCardProps) 
         isDragging ? 'opacity-50 scale-95' : 'opacity-100'
       }`}
     >
-      {/* Header */}
-      <div className="flex items-start justify-between mb-2">
+      {/* Header Row - Priority + Channel Badge + Time */}
+      <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-1.5">
           {getPriorityIcon(lead.priority)}
+          {getChannelBadge(lead.chat_channel)}
         </div>
         <span className="text-[10px] text-muted-foreground">
           {getTimeInStage(lead.status_updated_at)}
@@ -153,39 +170,28 @@ const LeadCard = React.memo(function LeadCard({ lead, onClick }: LeadCardProps) 
         </div>
       </div>
 
-      {/* Chat Channel Badge & Preview */}
-      {lead.chat_channel && (
-        <div className="mb-2 p-2 rounded bg-muted/50 border border-border">
-          <div className="flex items-center gap-1.5 mb-1">
-            <MessageSquare className="w-3 h-3 text-primary" />
-            <Badge variant="outline" className="text-[10px] px-1.5 py-0">
-              {lead.chat_channel === 'zalo' ? 'Zalo' :
-               lead.chat_channel === 'whatsapp' ? 'WhatsApp' :
-               lead.chat_channel === 'messenger' ? 'Messenger' :
-               lead.chat_channel === 'phone' ? 'Phone' : lead.chat_channel}
-            </Badge>
-          </div>
-          {lead.last_chat_message && (
-            <p className="text-[10px] text-muted-foreground line-clamp-1 italic">
-              "{lead.last_chat_message}"
-            </p>
-          )}
-        </div>
+      {/* Interest - Plain Text */}
+      {lead.interest && (
+        <p className="text-xs text-muted-foreground mb-2 line-clamp-1">
+          {lead.interest}
+        </p>
       )}
 
-      {/* Interest Badge */}
-      {lead.interest && (
-        <div className="mb-2">
-          <Badge variant="secondary" className="text-[10px] px-1.5 py-0.5 bg-primary/10 text-primary">
-            {lead.interest}
-          </Badge>
+      {/* Chat Preview Box */}
+      {lead.last_chat_message && (
+        <div className="mb-2 p-2 rounded bg-muted/30 border border-border">
+          <p className="text-[11px] text-muted-foreground line-clamp-2 flex items-start gap-1">
+            <MessageSquare className="w-3 h-3 flex-shrink-0 mt-0.5" />
+            <span>&quot;{lead.last_chat_message}&quot;</span>
+          </p>
+          <p className="text-[10px] text-muted-foreground mt-1">2 giờ trước</p>
         </div>
       )}
 
       {/* Value & Assigned */}
       <div className="flex items-center justify-between text-xs mb-2 pb-2 border-b border-border">
         {lead.estimated_value ? (
-          <div className="flex items-center gap-1 font-bold text-green-600 text-sm">
+          <div className="flex items-center gap-1 font-semibold text-emerald-600">
             <span>{formatCurrencyCompact(lead.estimated_value)}</span>
           </div>
         ) : (
@@ -194,23 +200,23 @@ const LeadCard = React.memo(function LeadCard({ lead, onClick }: LeadCardProps) 
         {lead.assigned_user && (
           <div className="flex items-center gap-1 text-muted-foreground">
             <User className="w-3 h-3" />
-            <span className="truncate max-w-[60px]">
-              {lead.assigned_user.name?.split(' ')[0] || lead.assigned_user.email}
+            <span className="truncate max-w-[70px]">
+              {lead.assigned_user.name?.split(' ').pop() || lead.assigned_user.email}
             </span>
           </div>
         )}
       </div>
 
-      {/* Quick Actions */}
-      <div className="grid grid-cols-4 gap-1 mb-2">
+      {/* Quick Actions - 5 buttons */}
+      <div className="grid grid-cols-5 gap-1 mb-2">
         <Button size="sm" variant="ghost" className="h-7 px-1" title="Gọi điện" onClick={(e) => e.stopPropagation()}>
-          <Phone className="w-3 h-3" />
+          <Phone className="w-3.5 h-3.5" />
         </Button>
         <Button size="sm" variant="ghost" className="h-7 px-1" title="Email" onClick={(e) => e.stopPropagation()}>
-          <Mail className="w-3 h-3" />
+          <Mail className="w-3.5 h-3.5" />
         </Button>
-        <Button size="sm" variant="ghost" className="h-7 px-1" title="Chat" onClick={(e) => e.stopPropagation()} disabled>
-          <MessageSquare className="w-3 h-3" />
+        <Button size="sm" variant="ghost" className="h-7 px-1" title="Chat" onClick={(e) => e.stopPropagation()} disabled={!lead.chat_channel}>
+          <MessageSquare className="w-3.5 h-3.5" />
         </Button>
         <Button
           size="sm"
@@ -230,17 +236,18 @@ const LeadCard = React.memo(function LeadCard({ lead, onClick }: LeadCardProps) 
             window.open(`${quotationUrl}/quotations/new?${params.toString()}`, '_blank')
           }}
         >
-          <FileText className="w-3 h-3" />
+          <FileText className="w-3.5 h-3.5" />
+        </Button>
+        <Button size="sm" variant="ghost" className="h-7 px-1" title="Chi tiết" onClick={(e) => { e.stopPropagation(); onClick() }}>
+          <User className="w-3.5 h-3.5" />
         </Button>
       </div>
 
       {/* Next Follow-up */}
       {lead.next_follow_up && (
-        <div className="flex items-center gap-1 text-xs text-muted-foreground pt-2 border-t border-border">
-          <Calendar className="w-3 h-3 text-primary" />
-          <span>
-            {format(new Date(lead.next_follow_up), 'dd/MM HH:mm', { locale: vi })}
-          </span>
+        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          <Calendar className="w-3.5 h-3.5 text-primary" />
+          <span>{format(new Date(lead.next_follow_up), 'd \'thg\' M', { locale: vi })}</span>
         </div>
       )}
     </div>
