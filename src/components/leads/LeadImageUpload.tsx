@@ -26,8 +26,9 @@ const XRAY_LABELS: Record<XrayType, string> = {
 interface LeadImageUploadProps {
   patientPhotos: PatientPhoto[]
   xrayPhotos: XrayPhoto[]
-  onPatientPhotosChange: (photos: PatientPhoto[]) => void
-  onXrayPhotosChange: (xrays: XrayPhoto[]) => void
+  onPatientPhotosChange?: (photos: PatientPhoto[]) => void
+  onXrayPhotosChange?: (xrays: XrayPhoto[]) => void
+  readOnly?: boolean
 }
 
 export function LeadImageUpload({
@@ -35,6 +36,7 @@ export function LeadImageUpload({
   xrayPhotos,
   onPatientPhotosChange,
   onXrayPhotosChange,
+  readOnly = false,
 }: LeadImageUploadProps) {
   const [uploadingSlot, setUploadingSlot] = useState<string | null>(null)
   const [lightboxImage, setLightboxImage] = useState<string | null>(null)
@@ -83,9 +85,9 @@ export function LeadImageUpload({
         if (existing >= 0) {
           const updated = [...patientPhotos]
           updated[existing] = newPhoto
-          onPatientPhotosChange(updated)
+          onPatientPhotosChange?.(updated)
         } else {
-          onPatientPhotosChange([...patientPhotos, newPhoto])
+          onPatientPhotosChange?.([...patientPhotos, newPhoto])
         }
       } else {
         const newXray: XrayPhoto = {
@@ -97,9 +99,9 @@ export function LeadImageUpload({
         if (existing >= 0) {
           const updated = [...xrayPhotos]
           updated[existing] = newXray
-          onXrayPhotosChange(updated)
+          onXrayPhotosChange?.(updated)
         } else {
-          onXrayPhotosChange([...xrayPhotos, newXray])
+          onXrayPhotosChange?.([...xrayPhotos, newXray])
         }
       }
 
@@ -129,12 +131,12 @@ export function LeadImageUpload({
 
   // Remove photo
   const removePhoto = (type: PatientPhotoType) => {
-    onPatientPhotosChange(patientPhotos.filter(p => p.type !== type))
+    onPatientPhotosChange?.(patientPhotos.filter(p => p.type !== type))
   }
 
   // Remove xray
   const removeXray = (type: XrayType) => {
-    onXrayPhotosChange(xrayPhotos.filter(x => x.type !== type))
+    onXrayPhotosChange?.(xrayPhotos.filter(x => x.type !== type))
   }
 
   // Render photo slot
@@ -148,14 +150,15 @@ export function LeadImageUpload({
       <div key={type} className="relative group">
         <div
           className={`
-            relative overflow-hidden rounded-lg border-2 transition-all cursor-pointer aspect-square
+            relative overflow-hidden rounded-lg border-2 transition-all aspect-square
             ${photo
               ? 'border-emerald-400 bg-emerald-50'
               : 'border-dashed border-gray-300 bg-gray-50 hover:border-gray-400'
             }
             ${isUploading ? 'border-blue-400 bg-blue-50' : ''}
+            ${!readOnly && !photo ? 'cursor-pointer' : ''}
           `}
-          onClick={() => !photo && !isUploading && triggerUpload('photo', type)}
+          onClick={() => !readOnly && !photo && !isUploading && triggerUpload('photo', type)}
         >
           {isUploading ? (
             <div className="absolute inset-0 flex flex-col items-center justify-center">
@@ -171,12 +174,14 @@ export function LeadImageUpload({
                 >
                   <Eye className="w-4 h-4" />
                 </button>
-                <button
-                  onClick={(e) => { e.stopPropagation(); removePhoto(type); }}
-                  className="p-1.5 bg-white rounded-full hover:bg-red-100"
-                >
-                  <X className="w-4 h-4 text-red-500" />
-                </button>
+                {!readOnly && (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); removePhoto(type); }}
+                    className="p-1.5 bg-white rounded-full hover:bg-red-100"
+                  >
+                    <X className="w-4 h-4 text-red-500" />
+                  </button>
+                )}
               </div>
               <div className="absolute top-1 right-1">
                 <Check className="w-4 h-4 text-emerald-500 bg-white rounded-full p-0.5" />
@@ -184,7 +189,7 @@ export function LeadImageUpload({
             </>
           ) : (
             <div className="absolute inset-0 flex flex-col items-center justify-center">
-              <Upload className="w-5 h-5 text-gray-400" />
+              {!readOnly && <Upload className="w-5 h-5 text-gray-400" />}
             </div>
           )}
         </div>
@@ -204,14 +209,15 @@ export function LeadImageUpload({
       <div key={type} className="relative group">
         <div
           className={`
-            relative overflow-hidden rounded-lg border-2 transition-all cursor-pointer aspect-square
+            relative overflow-hidden rounded-lg border-2 transition-all aspect-square
             ${xray
               ? 'border-emerald-400 bg-slate-900'
               : 'border-dashed border-slate-600 bg-slate-800 hover:border-slate-500'
             }
             ${isUploading ? 'border-blue-400' : ''}
+            ${!readOnly && !xray ? 'cursor-pointer' : ''}
           `}
-          onClick={() => !xray && !isUploading && triggerUpload('xray', type)}
+          onClick={() => !readOnly && !xray && !isUploading && triggerUpload('xray', type)}
         >
           {isUploading ? (
             <div className="absolute inset-0 flex flex-col items-center justify-center">
@@ -227,12 +233,14 @@ export function LeadImageUpload({
                 >
                   <Eye className="w-4 h-4" />
                 </button>
-                <button
-                  onClick={(e) => { e.stopPropagation(); removeXray(type); }}
-                  className="p-1.5 bg-white rounded-full hover:bg-red-100"
-                >
-                  <X className="w-4 h-4 text-red-500" />
-                </button>
+                {!readOnly && (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); removeXray(type); }}
+                    className="p-1.5 bg-white rounded-full hover:bg-red-100"
+                  >
+                    <X className="w-4 h-4 text-red-500" />
+                  </button>
+                )}
               </div>
               <div className="absolute top-1 right-1">
                 <Check className="w-4 h-4 text-emerald-400 bg-slate-900 rounded-full p-0.5" />
@@ -240,7 +248,7 @@ export function LeadImageUpload({
             </>
           ) : (
             <div className="absolute inset-0 flex flex-col items-center justify-center">
-              <ScanLine className="w-5 h-5 text-slate-500" />
+              {!readOnly && <ScanLine className="w-5 h-5 text-slate-500" />}
             </div>
           )}
         </div>

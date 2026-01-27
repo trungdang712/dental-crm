@@ -4,7 +4,7 @@ import { useEffect, useState, use } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
@@ -54,13 +54,19 @@ import {
   Wind,
   Snowflake,
   Loader2,
-  ExternalLink
+  ExternalLink,
+  MoreHorizontal,
+  UserCheck,
+  Target,
+  Download,
+  Eye
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { format } from 'date-fns'
 import { vi } from 'date-fns/locale'
-import type { Lead, Activity, LeadStatus, LeadPriority, ActivityType, User as UserType, Quotation, PatientPhoto, XrayPhoto } from '@/lib/types'
+import type { Lead, Activity, LeadStatus, LeadPriority, ActivityType, User as UserType, Quotation } from '@/lib/types'
 import { LeadImageUpload } from '@/components/leads/LeadImageUpload'
+import { formatCurrency, formatCurrencyCompact } from '@/lib/format'
 
 const statusOptions: { value: LeadStatus; label: string; color: string }[] = [
   { value: 'new', label: 'Mới', color: '#3b82f6' },
@@ -71,6 +77,21 @@ const statusOptions: { value: LeadStatus; label: string; color: string }[] = [
   { value: 'won', label: 'Thành Công', color: '#10b981' },
   { value: 'lost', label: 'Thất Bại', color: '#6b7280' },
 ]
+
+const sourceLabels: Record<string, string> = {
+  facebook: 'Facebook',
+  google: 'Google',
+  referral: 'Giới thiệu',
+  walkin: 'Vãng lai',
+  website: 'Website',
+  chat: 'Chat',
+}
+
+const priorityLabels: Record<string, string> = {
+  hot: 'Nóng',
+  warm: 'Ấm',
+  cold: 'Lạnh',
+}
 
 const activityTypeOptions: { value: ActivityType; label: string; icon: React.ElementType }[] = [
   { value: 'call', label: 'Cuộc gọi', icon: Phone },
@@ -89,7 +110,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
   const [quotations, setQuotations] = useState<Quotation[]>([])
   const [users, setUsers] = useState<UserType[]>([])
   const [loading, setLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState('overview')
+  const [selectedTab, setSelectedTab] = useState('overview')
 
   // Modal states
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
@@ -193,7 +214,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
         setLead(result.data)
         setIsEditModalOpen(false)
         toast.success('Đã cập nhật thông tin')
-        fetchActivities() // Refresh activities in case status changed
+        fetchActivities()
       } else {
         toast.error('Không thể cập nhật thông tin')
       }
@@ -251,32 +272,25 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
     }
   }
 
-  const handleStatusChange = async (newStatus: LeadStatus) => {
-    try {
-      const response = await fetch(`/api/leads/${id}/status`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: newStatus }),
-      })
+  const handleCreateQuotation = () => {
+    if (!lead) return
 
-      if (response.ok) {
-        const result = await response.json()
-        setLead(result.data)
-        fetchActivities()
-        toast.success('Đã cập nhật trạng thái')
-      } else {
-        toast.error('Không thể cập nhật trạng thái')
-      }
-    } catch (error) {
-      console.error('Error updating status:', error)
-      toast.error('Đã xảy ra lỗi')
-    }
+    const quotationToolUrl = process.env.NEXT_PUBLIC_QUOTATION_TOOL_URL || 'https://baogia.greenfield.clinic'
+    const params = new URLSearchParams({
+      crm_lead_id: lead.id,
+      customer_name: `${lead.first_name} ${lead.last_name}`.trim(),
+      customer_phone: lead.phone || '',
+      customer_email: lead.email || '',
+      customer_country: lead.country || 'VN',
+    })
+
+    window.open(`${quotationToolUrl}/quotations/new?${params.toString()}`, '_blank')
   }
 
   const getStatusBadge = (status: LeadStatus) => {
     const option = statusOptions.find((o) => o.value === status)
     return (
-      <Badge style={{ backgroundColor: option?.color + '30', color: option?.color }}>
+      <Badge style={{ backgroundColor: option?.color + '20', color: option?.color }}>
         {option?.label || status}
       </Badge>
     )
@@ -285,54 +299,53 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
   const getPriorityBadge = (priority: LeadPriority) => {
     switch (priority) {
       case 'hot':
-        return (
-          <Badge className="bg-red-100 text-red-700">
-            <Flame className="w-3 h-3 mr-1" /> Nóng
-          </Badge>
-        )
+        return <Badge className="bg-red-100 text-red-700"><Flame className="w-3 h-3 mr-1" /> Nóng</Badge>
       case 'warm':
-        return (
-          <Badge className="bg-orange-100 text-orange-700">
-            <Wind className="w-3 h-3 mr-1" /> Ấm
-          </Badge>
-        )
+        return <Badge className="bg-orange-100 text-orange-700"><Wind className="w-3 h-3 mr-1" /> Ấm</Badge>
       case 'cold':
-        return (
-          <Badge className="bg-blue-100 text-blue-700">
-            <Snowflake className="w-3 h-3 mr-1" /> Lạnh
-          </Badge>
-        )
+        return <Badge className="bg-blue-100 text-blue-700"><Snowflake className="w-3 h-3 mr-1" /> Lạnh</Badge>
     }
   }
 
-  const getActivityIcon = (type: ActivityType) => {
-    switch (type) {
-      case 'call':
-        return <Phone className="w-4 h-4" />
-      case 'email':
-        return <Mail className="w-4 h-4" />
-      case 'meeting':
-        return <Calendar className="w-4 h-4" />
-      case 'status_change':
-        return <Clock className="w-4 h-4" />
-      default:
-        return <MessageSquare className="w-4 h-4" />
-    }
+  const getTimeInStage = (statusUpdatedAt?: string) => {
+    if (!statusUpdatedAt) return 'Không rõ'
+
+    const now = new Date()
+    const updated = new Date(statusUpdatedAt)
+    const diff = now.getTime() - updated.getTime()
+    const hours = Math.floor(diff / (1000 * 60 * 60))
+    const days = Math.floor(hours / 24)
+
+    if (hours < 1) return 'Vừa mới'
+    if (hours < 24) return `${hours} giờ`
+    if (days === 1) return '1 ngày'
+    return `${days} ngày`
   }
 
-  const handleCreateQuotation = () => {
-    if (!lead) return
+  const getLeadAge = (createdAt: string) => {
+    if (!createdAt) return 'Không rõ'
 
-    const quotationToolUrl = process.env.NEXT_PUBLIC_QUOTATION_TOOL_URL || 'http://localhost:3001'
-    const params = new URLSearchParams({
-      source: 'crm',
-      leadId: lead.id,
-      patient_name: `${lead.first_name} ${lead.last_name}`,
-      phone: lead.phone,
-      email: lead.email || '',
-    })
+    const now = new Date()
+    const created = new Date(createdAt)
+    const diff = now.getTime() - created.getTime()
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24))
 
-    window.open(`${quotationToolUrl}/quotations/new?${params.toString()}`, '_blank')
+    if (days === 0) return 'Hôm nay'
+    if (days === 1) return '1 ngày trước'
+    if (days < 30) return `${days} ngày trước`
+    const months = Math.floor(days / 30)
+    if (months === 1) return '1 tháng trước'
+    if (months < 12) return `${months} tháng trước`
+    const years = Math.floor(days / 365)
+    return years === 1 ? '1 năm trước' : `${years} năm trước`
+  }
+
+  const formatDate = (dateStr: string) => {
+    return format(new Date(dateStr), 'dd/MM/yyyy', { locale: vi })
+  }
+
+  const formatDateTime = (dateStr: string) => {
+    return format(new Date(dateStr), 'dd/MM/yyyy HH:mm', { locale: vi })
   }
 
   if (loading) {
@@ -355,307 +368,519 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" asChild>
+    <>
+      <div className="space-y-6">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <Button variant="ghost" asChild className="gap-2">
             <Link href="/leads">
-              <ArrowLeft className="h-4 w-4" />
+              <ArrowLeft className="w-4 h-4" />
+              Quay Lại Danh Sách
             </Link>
           </Button>
-          <div>
-            <h1 className="text-2xl font-bold text-foreground">
-              {lead.first_name} {lead.last_name}
-            </h1>
-            <div className="flex items-center gap-2 mt-1">
-              {getStatusBadge(lead.status)}
-              {getPriorityBadge(lead.priority)}
-            </div>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => setIsEditModalOpen(true)}>
+              <Edit className="w-4 h-4" />
+              Chỉnh Sửa
+            </Button>
+            <Button variant="default" onClick={handleCreateQuotation}>
+              <FileText className="w-4 h-4" />
+              Tạo Báo Giá
+            </Button>
+            <Button variant="secondary">
+              <UserCheck className="w-4 h-4" />
+              Chuyển Thành Bệnh Nhân
+            </Button>
+            <Button variant="ghost" size="icon" onClick={() => setIsDeleteDialogOpen(true)}>
+              <MoreHorizontal className="w-4 h-4" />
+            </Button>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={() => setIsEditModalOpen(true)}>
-            <Edit className="w-4 h-4 mr-2" />
-            Sửa
-          </Button>
-          <Button
-            variant="outline"
-            className="text-destructive hover:text-destructive"
-            onClick={() => setIsDeleteDialogOpen(true)}
-          >
-            <Trash2 className="w-4 h-4 mr-2" />
-            Xóa
-          </Button>
-        </div>
-      </div>
 
-      {/* Quick Status Change */}
-      <Card className="p-4">
-        <div className="flex items-center gap-4">
-          <span className="text-sm font-medium">Cập nhật trạng thái:</span>
-          <div className="flex flex-wrap gap-2">
-            {statusOptions.map((option) => (
-              <Button
-                key={option.value}
-                variant={lead.status === option.value ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => handleStatusChange(option.value)}
-                style={
-                  lead.status === option.value
-                    ? { backgroundColor: option.color }
-                    : { borderColor: option.color, color: option.color }
-                }
-              >
-                {option.label}
-              </Button>
-            ))}
-          </div>
-        </div>
-      </Card>
-
-      {/* Main Content */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left Column - Lead Info */}
-        <div className="lg:col-span-1 space-y-6">
-          {/* Contact Info */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Thông tin liên hệ</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center gap-3">
-                <Phone className="w-4 h-4 text-muted-foreground" />
-                <span>{lead.phone}</span>
+        {/* Lead Header Card */}
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-start gap-6">
+              <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                <span className="text-primary text-2xl font-bold">
+                  {lead.first_name?.[0]}{lead.last_name?.[0]}
+                </span>
               </div>
-              {lead.email && (
-                <div className="flex items-center gap-3">
-                  <Mail className="w-4 h-4 text-muted-foreground" />
-                  <span>{lead.email}</span>
-                </div>
-              )}
-              {lead.address && (
-                <div className="flex items-center gap-3">
-                  <MapPin className="w-4 h-4 text-muted-foreground" />
-                  <span>{lead.address}</span>
-                </div>
-              )}
-              {lead.date_of_birth && (
-                <div className="flex items-center gap-3">
-                  <Calendar className="w-4 h-4 text-muted-foreground" />
-                  <span>
-                    {format(new Date(lead.date_of_birth), 'dd/MM/yyyy', { locale: vi })}
-                  </span>
-                </div>
-              )}
-            </CardContent>
-          </Card>
 
-          {/* Lead Details */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Chi tiết</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {lead.interest && (
-                <div>
-                  <p className="text-sm text-muted-foreground">Dịch vụ quan tâm</p>
-                  <p className="font-medium">{lead.interest}</p>
-                </div>
-              )}
-              {lead.estimated_value && (
-                <div>
-                  <p className="text-sm text-muted-foreground">Giá trị ước tính</p>
-                  <p className="font-medium flex items-center gap-1">
-                    <DollarSign className="w-4 h-4" />
-                    {lead.estimated_value.toLocaleString()}
-                  </p>
-                </div>
-              )}
-              {lead.source && (
-                <div>
-                  <p className="text-sm text-muted-foreground">Nguồn</p>
-                  <p className="font-medium capitalize">{lead.source}</p>
-                </div>
-              )}
-              {lead.assigned_user && (
-                <div>
-                  <p className="text-sm text-muted-foreground">Người phụ trách</p>
-                  <p className="font-medium flex items-center gap-1">
-                    <User className="w-4 h-4" />
-                    {lead.assigned_user.name || lead.assigned_user.email}
-                  </p>
-                </div>
-              )}
-              {lead.next_follow_up && (
-                <div>
-                  <p className="text-sm text-muted-foreground">Follow-up tiếp theo</p>
-                  <p className="font-medium text-primary">
-                    {format(new Date(lead.next_follow_up), 'dd/MM/yyyy HH:mm', {
-                      locale: vi,
-                    })}
-                  </p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+              <div className="flex-1">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <h1 className="text-2xl font-bold text-foreground mb-2">
+                      {lead.first_name} {lead.last_name}
+                    </h1>
+                    <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
+                      <div className="flex items-center gap-1.5">
+                        <Phone className="w-4 h-4" />
+                        <span>{lead.phone}</span>
+                      </div>
+                      {lead.email && (
+                        <div className="flex items-center gap-1.5">
+                          <Mail className="w-4 h-4" />
+                          <span>{lead.email}</span>
+                        </div>
+                      )}
+                      {lead.address && (
+                        <div className="flex items-center gap-1.5">
+                          <MapPin className="w-4 h-4" />
+                          <span>{lead.address}</span>
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-3 mt-3 text-sm text-muted-foreground">
+                      <span>Nguồn: <span className="font-medium text-foreground">{sourceLabels[lead.source || ''] || lead.source || 'Không rõ'}</span></span>
+                      <span>•</span>
+                      <span>Thêm vào: {formatDate(lead.created_at)}</span>
+                    </div>
+                  </div>
 
-          {/* Notes */}
-          {lead.notes && (
+                  <div className="text-right">
+                    {getStatusBadge(lead.status)}
+                    <div className="text-sm text-muted-foreground mt-1">
+                      Trạng thái
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Tabs */}
+        <Tabs value={selectedTab} onValueChange={setSelectedTab}>
+          <TabsList className="w-full justify-start">
+            <TabsTrigger value="overview">Tổng Quan</TabsTrigger>
+            <TabsTrigger value="activities">Hoạt Động</TabsTrigger>
+            <TabsTrigger value="quotations">
+              Báo Giá {quotations.length > 0 && `(${quotations.length})`}
+            </TabsTrigger>
+            <TabsTrigger value="notes">Ghi Chú</TabsTrigger>
+            <TabsTrigger value="files">Tệp Đính Kèm</TabsTrigger>
+          </TabsList>
+
+          {/* Overview Tab */}
+          <TabsContent value="overview" className="space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* Left Column - Main Info */}
+              <div className="lg:col-span-2 space-y-6">
+                {/* Lead Information */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Target className="w-5 h-5" />
+                      Thông Tin Khách Hàng
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="text-sm font-medium text-muted-foreground">Quan tâm</label>
+                        <p className="mt-1">{lead.interest || 'Chưa có'}</p>
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium text-muted-foreground">Giá trị ước tính</label>
+                        <p className="mt-1 font-semibold text-lg">
+                          {lead.estimated_value ? formatCurrency(lead.estimated_value) : 'Chưa có'}
+                        </p>
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium text-muted-foreground">Mức độ ưu tiên</label>
+                        <div className="mt-1">
+                          {getPriorityBadge(lead.priority)}
+                        </div>
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium text-muted-foreground">Nguồn</label>
+                        <p className="mt-1">{sourceLabels[lead.source || ''] || lead.source || 'Không rõ'}</p>
+                      </div>
+                    </div>
+                    {lead.notes && (
+                      <div>
+                        <label className="text-sm font-medium text-muted-foreground">Ghi chú</label>
+                        <p className="mt-1 text-muted-foreground">{lead.notes}</p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Activity Timeline */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Clock className="w-5 h-5" />
+                      Dòng Thời Gian Hoạt Động
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {activities.length === 0 ? (
+                      <div className="text-center py-8 text-muted-foreground">
+                        <FileText className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                        <p>Chưa có hoạt động nào</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-6">
+                        {activities.map((activity, index) => (
+                          <div key={activity.id} className="flex gap-4">
+                            <div className="flex flex-col items-center">
+                              <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${
+                                activity.type === 'call' ? 'bg-purple-100 text-purple-600' :
+                                activity.type === 'email' ? 'bg-cyan-100 text-cyan-600' :
+                                activity.type === 'meeting' ? 'bg-amber-100 text-amber-600' :
+                                'bg-muted text-muted-foreground'
+                              }`}>
+                                {activity.type === 'call' && <Phone className="w-4 h-4" />}
+                                {activity.type === 'email' && <Mail className="w-4 h-4" />}
+                                {activity.type === 'meeting' && <Calendar className="w-4 h-4" />}
+                                {activity.type === 'note' && <MessageSquare className="w-4 h-4" />}
+                                {activity.type === 'status_change' && <Clock className="w-4 h-4" />}
+                              </div>
+                              {index < activities.length - 1 && (
+                                <div className="w-px h-full bg-border mt-2" />
+                              )}
+                            </div>
+                            <div className="flex-1 pb-6">
+                              <div className="flex items-start justify-between mb-1">
+                                <div>
+                                  <p className="font-medium">{activity.title}</p>
+                                  <p className="text-sm text-muted-foreground">
+                                    bởi {activity.creator?.name || activity.creator?.email || 'Hệ thống'}
+                                  </p>
+                                </div>
+                                <span className="text-xs text-muted-foreground whitespace-nowrap">
+                                  {formatDateTime(activity.created_at)}
+                                </span>
+                              </div>
+                              {activity.description && (
+                                <p className="text-sm text-muted-foreground mt-2">{activity.description}</p>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Right Column - Quick Actions & Info */}
+              <div className="space-y-6">
+                {/* Timeline Info Card */}
+                <Card className="border-primary/20 bg-primary/5">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-base">
+                      <Clock className="w-5 h-5 text-primary" />
+                      Thông Tin Thời Gian
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="p-3 rounded-lg bg-card border border-border">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-sm font-medium text-muted-foreground">Thời gian ở stage hiện tại</span>
+                      </div>
+                      <p className="text-xl font-bold text-foreground">
+                        {getTimeInStage(lead.status_updated_at)}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Ở trạng thái "{statusOptions.find(o => o.value === lead.status)?.label}"
+                      </p>
+                    </div>
+                    <div className="p-3 rounded-lg bg-card border border-border">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-sm font-medium text-muted-foreground">Tuổi của lead</span>
+                      </div>
+                      <p className="text-xl font-bold text-foreground">
+                        {getLeadAge(lead.created_at)}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Tạo ngày {formatDate(lead.created_at)}
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Quick Actions */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Hành Động Nhanh</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-2">
+                    <Button variant="outline" className="w-full justify-start gap-2" onClick={() => {
+                      setActivityFormData({ type: 'call', title: '', description: '' })
+                      setIsActivityModalOpen(true)
+                    }}>
+                      <Phone className="w-4 h-4" />
+                      Ghi Nhận Cuộc Gọi
+                    </Button>
+                    <Button variant="outline" className="w-full justify-start gap-2" onClick={() => {
+                      setActivityFormData({ type: 'email', title: '', description: '' })
+                      setIsActivityModalOpen(true)
+                    }}>
+                      <Mail className="w-4 h-4" />
+                      Gửi Email
+                    </Button>
+                    <Button variant="outline" className="w-full justify-start gap-2" onClick={() => {
+                      setActivityFormData({ type: 'meeting', title: '', description: '' })
+                      setIsActivityModalOpen(true)
+                    }}>
+                      <Calendar className="w-4 h-4" />
+                      Đặt Lịch Họp
+                    </Button>
+                    <Button variant="outline" className="w-full justify-start gap-2" onClick={() => {
+                      setActivityFormData({ type: 'note', title: '', description: '' })
+                      setIsActivityModalOpen(true)
+                    }}>
+                      <MessageSquare className="w-4 h-4" />
+                      Thêm Ghi Chú
+                    </Button>
+                  </CardContent>
+                </Card>
+
+                {/* Upcoming */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Calendar className="w-5 h-5" />
+                      Sắp Tới
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {lead.next_follow_up ? (
+                      <div className="p-3 rounded-lg bg-amber-50 border border-amber-200">
+                        <div className="flex items-center gap-2 text-sm font-medium mb-1">
+                          <Clock className="w-4 h-4 text-amber-600" />
+                          <span>Đã đặt lịch gọi</span>
+                        </div>
+                        <p className="text-sm text-muted-foreground">
+                          {formatDateTime(lead.next_follow_up)}
+                        </p>
+                      </div>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">Không có hoạt động sắp tới</p>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Quotations */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <DollarSign className="w-5 h-5" />
+                      Báo Giá Liên Kết
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {quotations.length > 0 ? (
+                      <div className="p-3 rounded-lg border border-border hover:bg-muted/50 transition-colors cursor-pointer">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="font-semibold">{quotations[0].quotation_number}</span>
+                          <Badge className="bg-yellow-100 text-yellow-700">
+                            {quotations[0].status}
+                          </Badge>
+                        </div>
+                        <p className="text-sm text-muted-foreground mb-1">{lead.interest}</p>
+                        <p className="font-semibold text-lg">
+                          {formatCurrency(quotations[0].total_amount || 0)}
+                        </p>
+                      </div>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">Chưa có báo giá</p>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Assigned To */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Phân Công Cho</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                        <span className="text-primary font-semibold">
+                          {lead.assigned_user?.name?.[0] || lead.assigned_user?.email?.[0] || '?'}
+                        </span>
+                      </div>
+                      <div className="flex-1">
+                        <p className="font-medium">{lead.assigned_user?.name || lead.assigned_user?.email || 'Chưa phân công'}</p>
+                        <p className="text-sm text-muted-foreground">Nhân viên bán hàng</p>
+                      </div>
+                    </div>
+                    <Button variant="outline" size="sm" className="w-full mt-3" onClick={() => setIsEditModalOpen(true)}>
+                      Phân Công Lại
+                    </Button>
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
+          </TabsContent>
+
+          {/* Activities Tab */}
+          <TabsContent value="activities">
             <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Ghi chú</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm whitespace-pre-wrap">{lead.notes}</p>
-              </CardContent>
-            </Card>
-          )}
-        </div>
-
-        {/* Right Column - Tabs */}
-        <div className="lg:col-span-2">
-          <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <div className="flex items-center justify-between mb-4">
-              <TabsList>
-                <TabsTrigger value="overview">Hoạt động</TabsTrigger>
-                <TabsTrigger value="quotations">Báo giá ({quotations.length})</TabsTrigger>
-              </TabsList>
-              {activeTab === 'overview' && (
+              <CardHeader className="flex flex-row items-center justify-between">
+                <CardTitle>Tất Cả Hoạt Động</CardTitle>
                 <Button size="sm" onClick={() => setIsActivityModalOpen(true)}>
                   <Plus className="w-4 h-4 mr-2" />
                   Thêm hoạt động
                 </Button>
-              )}
-              {activeTab === 'quotations' && (
-                <Button size="sm" onClick={handleCreateQuotation}>
-                  <FileText className="w-4 h-4 mr-2" />
-                  Tạo báo giá
+              </CardHeader>
+              <CardContent>
+                {activities.length === 0 ? (
+                  <p className="text-muted-foreground text-center py-8">Chưa có hoạt động nào</p>
+                ) : (
+                  <div className="space-y-4">
+                    {activities.map((activity) => (
+                      <div key={activity.id} className="flex gap-4 pb-4 border-b border-border last:border-0">
+                        <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${
+                          activity.type === 'call' ? 'bg-purple-100 text-purple-600' :
+                          activity.type === 'email' ? 'bg-cyan-100 text-cyan-600' :
+                          activity.type === 'meeting' ? 'bg-amber-100 text-amber-600' :
+                          'bg-muted text-muted-foreground'
+                        }`}>
+                          {activity.type === 'call' && <Phone className="w-4 h-4" />}
+                          {activity.type === 'email' && <Mail className="w-4 h-4" />}
+                          {activity.type === 'meeting' && <Calendar className="w-4 h-4" />}
+                          {activity.type === 'note' && <MessageSquare className="w-4 h-4" />}
+                          {activity.type === 'status_change' && <Clock className="w-4 h-4" />}
+                        </div>
+                        <div className="flex-1">
+                          <div className="flex items-start justify-between">
+                            <div>
+                              <p className="font-medium">{activity.title}</p>
+                              <p className="text-sm text-muted-foreground">
+                                bởi {activity.creator?.name || activity.creator?.email || 'Hệ thống'}
+                              </p>
+                            </div>
+                            <span className="text-xs text-muted-foreground">{formatDateTime(activity.created_at)}</span>
+                          </div>
+                          {activity.description && (
+                            <p className="text-sm text-muted-foreground mt-2">{activity.description}</p>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Quotations Tab */}
+          <TabsContent value="quotations">
+            <div className="space-y-4">
+              <div className="flex items-center justify-end">
+                <Button variant="default" onClick={handleCreateQuotation}>
+                  <Plus className="w-4 h-4" />
+                  Tạo Mới
                 </Button>
+              </div>
+
+              {quotations.length === 0 ? (
+                <Card>
+                  <CardContent className="flex flex-col items-center justify-center py-16">
+                    <FileText className="w-16 h-16 text-muted-foreground mb-4 opacity-50" />
+                    <p className="text-lg font-medium text-foreground mb-2">Chưa có báo giá nào</p>
+                    <p className="text-sm text-muted-foreground mb-6">
+                      Tạo báo giá đầu tiên cho khách hàng này
+                    </p>
+                    <Button variant="default" onClick={handleCreateQuotation}>
+                      <Plus className="w-4 h-4" />
+                      Tạo Báo Giá Mới
+                    </Button>
+                  </CardContent>
+                </Card>
+              ) : (
+                <div className="space-y-4">
+                  {quotations.map((quotation) => (
+                    <Card key={quotation.id} className="hover:shadow-md transition-shadow">
+                      <CardContent className="p-6">
+                        <div className="flex items-start justify-between mb-4">
+                          <div>
+                            <h3 className="text-lg font-semibold text-foreground mb-2">
+                              {quotation.quotation_number}
+                            </h3>
+                            <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                              <span>Ngày tạo: {formatDate(quotation.created_at)}</span>
+                              <span>•</span>
+                              <Badge className={
+                                quotation.status === 'accepted' ? 'bg-green-100 text-green-700' :
+                                quotation.status === 'rejected' ? 'bg-red-100 text-red-700' :
+                                'bg-yellow-100 text-yellow-700'
+                              }>
+                                {quotation.status}
+                              </Badge>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="mb-4">
+                          <p className="text-xl font-bold text-foreground">
+                            Tổng giá trị: {formatCurrency(quotation.total_amount || 0)}
+                          </p>
+                        </div>
+
+                        <div className="flex gap-2 pt-4 border-t border-border">
+                          <Button variant="outline" size="sm" className="gap-2" asChild>
+                            <a
+                              href={`${process.env.NEXT_PUBLIC_QUOTATION_TOOL_URL || 'https://baogia.greenfield.clinic'}/quotations/${quotation.id}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                            >
+                              <Eye className="w-4 h-4" />
+                              Xem Chi Tiết
+                            </a>
+                          </Button>
+                          <Button variant="outline" size="sm" className="gap-2">
+                            <Download className="w-4 h-4" />
+                            Tải PDF
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
               )}
             </div>
+          </TabsContent>
 
-            <TabsContent value="overview" className="mt-0">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Lịch sử hoạt động</CardTitle>
-                  <CardDescription>
-                    Tất cả hoạt động liên quan đến lead này
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {activities.length === 0 ? (
-                    <p className="text-center text-muted-foreground py-8">
-                      Chưa có hoạt động nào
-                    </p>
-                  ) : (
-                    <div className="space-y-4">
-                      {activities.map((activity) => (
-                        <div
-                          key={activity.id}
-                          className="flex gap-4 pb-4 border-b border-border last:border-0"
-                        >
-                          <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                            {getActivityIcon(activity.type)}
-                          </div>
-                          <div className="flex-1">
-                            <p className="font-medium">{activity.title}</p>
-                            {activity.description && (
-                              <p className="text-sm text-muted-foreground mt-1">
-                                {activity.description}
-                              </p>
-                            )}
-                            <p className="text-xs text-muted-foreground mt-2">
-                              {format(
-                                new Date(activity.created_at),
-                                'dd/MM/yyyy HH:mm',
-                                { locale: vi }
-                              )}
-                              {activity.creator &&
-                                ` - ${activity.creator.name || activity.creator.email}`}
-                            </p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </TabsContent>
+          {/* Notes Tab */}
+          <TabsContent value="notes">
+            <Card>
+              <CardHeader>
+                <CardTitle>Ghi Chú</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {lead.notes ? (
+                  <p className="whitespace-pre-wrap">{lead.notes}</p>
+                ) : (
+                  <p className="text-muted-foreground">Chưa có ghi chú</p>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
 
-            <TabsContent value="quotations" className="mt-0">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Báo giá</CardTitle>
-                  <CardDescription>
-                    Các báo giá đã tạo cho lead này
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {quotations.length === 0 ? (
-                    <div className="text-center py-8">
-                      <p className="text-muted-foreground mb-4">
-                        Chưa có báo giá nào
-                      </p>
-                      <Button onClick={handleCreateQuotation}>
-                        <FileText className="w-4 h-4 mr-2" />
-                        Tạo báo giá đầu tiên
-                      </Button>
-                    </div>
-                  ) : (
-                    <div className="space-y-4">
-                      {quotations.map((quotation) => (
-                        <div
-                          key={quotation.id}
-                          className="flex items-center justify-between p-4 border border-border rounded-lg"
-                        >
-                          <div>
-                            <p className="font-medium">{quotation.quotation_number}</p>
-                            <p className="text-sm text-muted-foreground">
-                              {format(
-                                new Date(quotation.created_at),
-                                'dd/MM/yyyy',
-                                { locale: vi }
-                              )}
-                            </p>
-                          </div>
-                          <div className="flex items-center gap-4">
-                            <span className="font-semibold">
-                              ${quotation.total_amount?.toLocaleString() || 0}
-                            </span>
-                            <Badge
-                              className={
-                                quotation.status === 'accepted'
-                                  ? 'bg-green-100 text-green-700'
-                                  : quotation.status === 'rejected'
-                                  ? 'bg-red-100 text-red-700'
-                                  : 'bg-yellow-100 text-yellow-700'
-                              }
-                            >
-                              {quotation.status}
-                            </Badge>
-                            <Button variant="ghost" size="sm" asChild>
-                              <a
-                                href={`${
-                                  process.env.NEXT_PUBLIC_QUOTATION_TOOL_URL ||
-                                  'http://localhost:3001'
-                                }/quotations/${quotation.id}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                              >
-                                <ExternalLink className="w-4 h-4" />
-                              </a>
-                            </Button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </TabsContent>
-          </Tabs>
-        </div>
+          {/* Files Tab */}
+          <TabsContent value="files">
+            <Card>
+              <CardHeader>
+                <CardTitle>Tệp Đính Kèm</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <LeadImageUpload
+                  patientPhotos={lead.patient_photos || []}
+                  xrayPhotos={lead.xray_photos || []}
+                  onPatientPhotosChange={() => {}}
+                  onXrayPhotosChange={() => {}}
+                  readOnly
+                />
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
       </div>
 
       {/* Edit Modal */}
@@ -670,9 +895,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
                 <Label>Họ</Label>
                 <Input
                   value={editFormData.first_name || ''}
-                  onChange={(e) =>
-                    setEditFormData({ ...editFormData, first_name: e.target.value })
-                  }
+                  onChange={(e) => setEditFormData({ ...editFormData, first_name: e.target.value })}
                   required
                 />
               </div>
@@ -680,9 +903,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
                 <Label>Tên</Label>
                 <Input
                   value={editFormData.last_name || ''}
-                  onChange={(e) =>
-                    setEditFormData({ ...editFormData, last_name: e.target.value })
-                  }
+                  onChange={(e) => setEditFormData({ ...editFormData, last_name: e.target.value })}
                   required
                 />
               </div>
@@ -693,9 +914,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
                 <Label>SĐT</Label>
                 <Input
                   value={editFormData.phone || ''}
-                  onChange={(e) =>
-                    setEditFormData({ ...editFormData, phone: e.target.value })
-                  }
+                  onChange={(e) => setEditFormData({ ...editFormData, phone: e.target.value })}
                   required
                 />
               </div>
@@ -704,9 +923,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
                 <Input
                   type="email"
                   value={editFormData.email || ''}
-                  onChange={(e) =>
-                    setEditFormData({ ...editFormData, email: e.target.value })
-                  }
+                  onChange={(e) => setEditFormData({ ...editFormData, email: e.target.value })}
                 />
               </div>
             </div>
@@ -715,15 +932,13 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
               <Label>Dịch vụ quan tâm</Label>
               <Input
                 value={editFormData.interest || ''}
-                onChange={(e) =>
-                  setEditFormData({ ...editFormData, interest: e.target.value })
-                }
+                onChange={(e) => setEditFormData({ ...editFormData, interest: e.target.value })}
               />
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Giá trị ước tính ($)</Label>
+                <Label>Giá trị ước tính (VND)</Label>
                 <Input
                   type="number"
                   value={editFormData.estimated_value || ''}
@@ -799,9 +1014,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
               <Label>Ghi chú</Label>
               <Textarea
                 value={editFormData.notes || ''}
-                onChange={(e) =>
-                  setEditFormData({ ...editFormData, notes: e.target.value })
-                }
+                onChange={(e) => setEditFormData({ ...editFormData, notes: e.target.value })}
                 rows={4}
               />
             </div>
@@ -822,11 +1035,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
             </div>
 
             <DialogFooter>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setIsEditModalOpen(false)}
-              >
+              <Button type="button" variant="outline" onClick={() => setIsEditModalOpen(false)}>
                 Hủy
               </Button>
               <Button type="submit" disabled={isSubmitting}>
@@ -876,9 +1085,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
               <Label>Tiêu đề</Label>
               <Input
                 value={activityFormData.title}
-                onChange={(e) =>
-                  setActivityFormData({ ...activityFormData, title: e.target.value })
-                }
+                onChange={(e) => setActivityFormData({ ...activityFormData, title: e.target.value })}
                 placeholder="VD: Gọi điện tư vấn về Implant"
                 required
               />
@@ -888,23 +1095,14 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
               <Label>Mô tả</Label>
               <Textarea
                 value={activityFormData.description}
-                onChange={(e) =>
-                  setActivityFormData({
-                    ...activityFormData,
-                    description: e.target.value,
-                  })
-                }
+                onChange={(e) => setActivityFormData({ ...activityFormData, description: e.target.value })}
                 placeholder="Chi tiết về hoạt động..."
                 rows={4}
               />
             </div>
 
             <DialogFooter>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setIsActivityModalOpen(false)}
-              >
+              <Button type="button" variant="outline" onClick={() => setIsActivityModalOpen(false)}>
                 Hủy
               </Button>
               <Button type="submit" disabled={isSubmitting}>
@@ -936,6 +1134,6 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+    </>
   )
 }
