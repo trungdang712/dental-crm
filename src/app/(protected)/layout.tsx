@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { usePathname, useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/auth'
 import { cn } from '@/lib/utils'
@@ -85,9 +86,13 @@ export default function ProtectedLayout({
         <div className="h-16 flex items-center justify-between px-4 border-b border-[#e2e8f0]">
           {sidebarOpen && (
             <Link href="/dashboard" className="flex items-center gap-2">
-              <div className="w-10 h-10 bg-[#2563eb] rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-lg">NK</span>
-              </div>
+              <Image
+                src="/assets/greenfield-logo.png"
+                alt="Greenfield"
+                width={40}
+                height={40}
+                className="rounded-lg"
+              />
               <div>
                 <h1 className="font-bold text-[#1e293b]">CRM Nha Khoa</h1>
                 <p className="text-xs text-[#64748b]">Quản lý Bán hàng</p>
