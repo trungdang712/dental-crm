@@ -371,24 +371,25 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
     <>
       <div className="space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between">
-          <Button variant="ghost" asChild className="gap-2">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <Button variant="ghost" asChild className="gap-2 w-fit">
             <Link href="/leads">
               <ArrowLeft className="w-4 h-4" />
-              Quay Lại Danh Sách
+              <span className="hidden sm:inline">Quay Lại Danh Sách</span>
+              <span className="sm:hidden">Quay Lại</span>
             </Link>
           </Button>
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={() => setIsEditModalOpen(true)}>
-              <Edit className="w-4 h-4" />
-              Chỉnh Sửa
+          <div className="flex gap-2 flex-wrap">
+            <Button variant="outline" size="sm" onClick={() => setIsEditModalOpen(true)}>
+              <Edit className="w-4 h-4 sm:mr-1" />
+              <span className="hidden sm:inline">Chỉnh Sửa</span>
             </Button>
-            <Button variant="default" onClick={handleCreateQuotation}>
-              <FileText className="w-4 h-4" />
-              Tạo Báo Giá
+            <Button variant="default" size="sm" onClick={handleCreateQuotation}>
+              <FileText className="w-4 h-4 sm:mr-1" />
+              <span className="hidden sm:inline">Tạo Báo Giá</span>
             </Button>
-            <Button variant="secondary">
-              <UserCheck className="w-4 h-4" />
+            <Button variant="secondary" size="sm" className="hidden md:flex">
+              <UserCheck className="w-4 h-4 mr-1" />
               Chuyển Thành Bệnh Nhân
             </Button>
             <Button variant="ghost" size="icon" onClick={() => setIsDeleteDialogOpen(true)}>
@@ -399,21 +400,21 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
 
         {/* Lead Header Card */}
         <Card>
-          <CardContent className="p-6">
-            <div className="flex items-start gap-6">
-              <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                <span className="text-primary text-2xl font-bold">
+          <CardContent className="p-4 sm:p-6">
+            <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 sm:gap-6">
+              <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                <span className="text-primary text-xl sm:text-2xl font-bold">
                   {lead.first_name?.[0]}{lead.last_name?.[0]}
                 </span>
               </div>
 
-              <div className="flex-1">
-                <div className="flex items-start justify-between">
+              <div className="flex-1 text-center sm:text-left w-full">
+                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
                   <div>
-                    <h1 className="text-2xl font-bold text-foreground mb-2">
+                    <h1 className="text-xl sm:text-2xl font-bold text-foreground mb-2">
                       {lead.first_name} {lead.last_name}
                     </h1>
-                    <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
+                    <div className="flex flex-col sm:flex-row flex-wrap items-center gap-2 sm:gap-4 text-sm text-muted-foreground">
                       <div className="flex items-center gap-1.5">
                         <Phone className="w-4 h-4" />
                         <span>{lead.phone}</span>
@@ -421,24 +422,24 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
                       {lead.email && (
                         <div className="flex items-center gap-1.5">
                           <Mail className="w-4 h-4" />
-                          <span>{lead.email}</span>
+                          <span className="truncate max-w-[200px]">{lead.email}</span>
                         </div>
                       )}
                       {lead.address && (
-                        <div className="flex items-center gap-1.5">
+                        <div className="flex items-center gap-1.5 hidden sm:flex">
                           <MapPin className="w-4 h-4" />
-                          <span>{lead.address}</span>
+                          <span className="truncate max-w-[200px]">{lead.address}</span>
                         </div>
                       )}
                     </div>
-                    <div className="flex items-center gap-3 mt-3 text-sm text-muted-foreground">
+                    <div className="flex items-center justify-center sm:justify-start gap-3 mt-3 text-sm text-muted-foreground">
                       <span>Nguồn: <span className="font-medium text-foreground">{sourceLabels[lead.source || ''] || lead.source || 'Không rõ'}</span></span>
-                      <span>•</span>
-                      <span>Thêm vào: {formatDate(lead.created_at)}</span>
+                      <span className="hidden sm:inline">•</span>
+                      <span className="hidden sm:inline">Thêm vào: {formatDate(lead.created_at)}</span>
                     </div>
                   </div>
 
-                  <div className="text-right">
+                  <div className="text-center sm:text-right">
                     {getStatusBadge(lead.status)}
                     <div className="text-sm text-muted-foreground mt-1">
                       Trạng thái
@@ -452,14 +453,14 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
 
         {/* Tabs */}
         <Tabs value={selectedTab} onValueChange={setSelectedTab}>
-          <TabsList className="w-full justify-start">
-            <TabsTrigger value="overview">Tổng Quan</TabsTrigger>
-            <TabsTrigger value="activities">Hoạt Động</TabsTrigger>
-            <TabsTrigger value="quotations">
+          <TabsList className="w-full justify-start overflow-x-auto flex-nowrap">
+            <TabsTrigger value="overview" className="flex-shrink-0">Tổng Quan</TabsTrigger>
+            <TabsTrigger value="activities" className="flex-shrink-0">Hoạt Động</TabsTrigger>
+            <TabsTrigger value="quotations" className="flex-shrink-0">
               Báo Giá {quotations.length > 0 && `(${quotations.length})`}
             </TabsTrigger>
-            <TabsTrigger value="notes">Ghi Chú</TabsTrigger>
-            <TabsTrigger value="files">Tệp Đính Kèm</TabsTrigger>
+            <TabsTrigger value="notes" className="flex-shrink-0">Ghi Chú</TabsTrigger>
+            <TabsTrigger value="files" className="flex-shrink-0">Tệp</TabsTrigger>
           </TabsList>
 
           {/* Overview Tab */}

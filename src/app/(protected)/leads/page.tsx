@@ -896,12 +896,12 @@ export default function LeadsPage() {
     <DndProvider backend={HTML5Backend}>
       <div className="space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-foreground">
+            <h1 className="text-xl sm:text-2xl font-bold text-foreground">
               Khách Hàng Tiềm Năng
             </h1>
-            <p className="text-muted-foreground">
+            <p className="text-sm sm:text-base text-muted-foreground">
               Quản lý và theo dõi khách hàng tiềm năng ({filteredLeads.length} lead)
             </p>
           </div>
@@ -909,16 +909,19 @@ export default function LeadsPage() {
             <Button variant="outline" size="icon" onClick={fetchLeads} title="Làm mới">
               <RefreshCw className="w-4 h-4" />
             </Button>
-            <Button variant="outline" onClick={exportToCSV} title="Xuất CSV">
+            <Button variant="outline" onClick={exportToCSV} title="Xuất CSV" className="hidden sm:flex">
               <Download className="w-4 h-4 mr-2" />
               Xuất
+            </Button>
+            <Button variant="outline" size="icon" onClick={exportToCSV} title="Xuất CSV" className="sm:hidden">
+              <Download className="w-4 h-4" />
             </Button>
             <Button
               onClick={() => setIsAddModalOpen(true)}
               className="bg-red-600 hover:bg-red-700 text-white"
             >
-              <Plus className="w-4 h-4 mr-2" />
-              Thêm Lead
+              <Plus className="w-4 h-4 sm:mr-2" />
+              <span className="hidden sm:inline">Thêm Lead</span>
             </Button>
           </div>
         </div>
@@ -926,7 +929,7 @@ export default function LeadsPage() {
         {/* Bulk Actions Bar */}
         {selectedLeadIds.size > 0 && (
           <Card className="p-3 bg-primary/5 border-primary/20">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div className="flex items-center gap-3">
                 <Badge variant="secondary" className="text-sm">
                   {selectedLeadIds.size} đã chọn
@@ -936,20 +939,20 @@ export default function LeadsPage() {
                   Bỏ chọn
                 </Button>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => setIsBulkAssignModalOpen(true)}
                 >
-                  <UserPlus className="w-4 h-4 mr-1" />
-                  Phân công
+                  <UserPlus className="w-4 h-4 sm:mr-1" />
+                  <span className="hidden sm:inline">Phân công</span>
                 </Button>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="outline" size="sm">
-                      <ArrowUpDown className="w-4 h-4 mr-1" />
-                      Đổi trạng thái
+                      <ArrowUpDown className="w-4 h-4 sm:mr-1" />
+                      <span className="hidden sm:inline">Đổi trạng thái</span>
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent>
@@ -973,8 +976,8 @@ export default function LeadsPage() {
                   className="text-destructive hover:text-destructive"
                   onClick={handleBulkDelete}
                 >
-                  <Trash2 className="w-4 h-4 mr-1" />
-                  Xóa
+                  <Trash2 className="w-4 h-4 sm:mr-1" />
+                  <span className="hidden sm:inline">Xóa</span>
                 </Button>
               </div>
             </div>
@@ -982,46 +985,49 @@ export default function LeadsPage() {
         )}
 
         {/* Filters */}
-        <Card className="p-4">
-          <div className="flex items-center gap-4 flex-wrap">
-            <div className="flex-1 min-w-[200px] relative">
+        <Card className="p-3 sm:p-4">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
+            <div className="flex-1 relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
                 type="text"
-                placeholder="Tìm kiếm theo tên, SĐT, dịch vụ quan tâm..."
+                placeholder="Tìm kiếm..."
                 className="pl-10"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
             </div>
-            <Button
-              variant={showFilters ? 'secondary' : 'outline'}
-              size="sm"
-              onClick={() => setShowFilters(!showFilters)}
-            >
-              <Filter className="w-4 h-4 mr-1" />
-              Bộ lọc
-              {(filterStatus !== 'all' || filterPriority !== 'all' || filterSource !== 'all' || filterAssignee !== 'all') && (
-                <Badge className="ml-1 h-5 w-5 p-0 justify-center">
-                  {[filterStatus, filterPriority, filterSource, filterAssignee].filter(f => f !== 'all').length}
-                </Badge>
-              )}
-            </Button>
-            <div className="flex items-center gap-1 border rounded-lg p-1">
+            <div className="flex items-center gap-2">
               <Button
-                variant={viewMode === 'pipeline' ? 'default' : 'ghost'}
+                variant={showFilters ? 'secondary' : 'outline'}
                 size="sm"
-                onClick={() => setViewMode('pipeline')}
+                onClick={() => setShowFilters(!showFilters)}
+                className="flex-1 sm:flex-none"
               >
-                <Kanban className="w-4 h-4" />
+                <Filter className="w-4 h-4 mr-1" />
+                Bộ lọc
+                {(filterStatus !== 'all' || filterPriority !== 'all' || filterSource !== 'all' || filterAssignee !== 'all') && (
+                  <Badge className="ml-1 h-5 w-5 p-0 justify-center">
+                    {[filterStatus, filterPriority, filterSource, filterAssignee].filter(f => f !== 'all').length}
+                  </Badge>
+                )}
               </Button>
-              <Button
-                variant={viewMode === 'list' ? 'default' : 'ghost'}
-                size="sm"
-                onClick={() => setViewMode('list')}
-              >
-                <List className="w-4 h-4" />
-              </Button>
+              <div className="flex items-center gap-1 border rounded-lg p-1">
+                <Button
+                  variant={viewMode === 'pipeline' ? 'default' : 'ghost'}
+                  size="sm"
+                  onClick={() => setViewMode('pipeline')}
+                >
+                  <Kanban className="w-4 h-4" />
+                </Button>
+                <Button
+                  variant={viewMode === 'list' ? 'default' : 'ghost'}
+                  size="sm"
+                  onClick={() => setViewMode('list')}
+                >
+                  <List className="w-4 h-4" />
+                </Button>
+              </div>
             </div>
           </div>
 

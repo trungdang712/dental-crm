@@ -174,21 +174,21 @@ export default function CustomersPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-foreground">Thông Tin Khách Hàng</h1>
-          <p className="text-muted-foreground mt-1">
+          <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Thông Tin Khách Hàng</h1>
+          <p className="text-sm sm:text-base text-muted-foreground mt-1">
             Cơ sở dữ liệu tổng hợp - Quản lý toàn bộ khách hàng và leads
           </p>
         </div>
-        <Button onClick={() => setShowAddModal(true)} className="bg-primary">
+        <Button onClick={() => setShowAddModal(true)} className="bg-primary w-full sm:w-auto">
           <Plus className="w-4 h-4 mr-2" />
           Thêm Khách Hàng
         </Button>
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
         <div className="bg-card rounded-lg border p-4">
           <div className="flex items-center justify-between">
             <div>
@@ -239,12 +239,12 @@ export default function CustomersPage() {
       </div>
 
       {/* Filters */}
-      <div className="bg-card rounded-lg border p-4">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div className="relative">
+      <div className="bg-card rounded-lg border p-3 sm:p-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
+          <div className="relative sm:col-span-2 md:col-span-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
-              placeholder="Tìm kiếm theo tên, email, SĐT..."
+              placeholder="Tìm kiếm..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-10"
@@ -294,11 +294,11 @@ export default function CustomersPage() {
           </Select>
         </div>
 
-        <div className="flex items-center justify-between mt-4 pt-4 border-t">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mt-4 pt-4 border-t">
           <p className="text-sm text-muted-foreground">
             Hiển thị {paginatedLeads.length} / {filteredLeads.length} khách hàng
           </p>
-          <Button variant="outline" size="sm" onClick={handleExportExcel}>
+          <Button variant="outline" size="sm" onClick={handleExportExcel} className="w-full sm:w-auto">
             <Download className="w-4 h-4 mr-2" />
             Xuất Excel
           </Button>

@@ -50,7 +50,22 @@ export default function ProtectedLayout({
   const router = useRouter()
   const { user, profile, loading, signOut } = useAuth()
   const [showUserMenu, setShowUserMenu] = useState(false)
-  const [sidebarOpen, setSidebarOpen] = useState(true)
+  const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [isMobile, setIsMobile] = useState(false)
+
+  // Handle responsive sidebar
+  useEffect(() => {
+    const checkMobile = () => {
+      const mobile = window.innerWidth < 768
+      setIsMobile(mobile)
+      if (!mobile) {
+        setSidebarOpen(true)
+      }
+    }
+    checkMobile()
+    window.addEventListener('resize', checkMobile)
+    return () => window.removeEventListener('resize', checkMobile)
+  }, [])
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -77,11 +92,43 @@ export default function ProtectedLayout({
 
   return (
     <div className="min-h-screen bg-[#f1f5f9]">
+      {/* Mobile Header */}
+      <header className="md:hidden fixed top-0 left-0 right-0 z-50 h-14 bg-[#f8fafc] border-b border-[#e2e8f0] flex items-center justify-between px-4">
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => setSidebarOpen(true)}
+        >
+          <Menu className="h-5 w-5" />
+        </Button>
+        <Link href="/dashboard" className="flex items-center gap-2">
+          <Image
+            src="/assets/greenfield-logo.png"
+            alt="Greenfield"
+            width={32}
+            height={32}
+            className="rounded-lg"
+          />
+          <span className="font-bold text-[#1e293b]">CRM</span>
+        </Link>
+        <div className="w-10" /> {/* Spacer for centering */}
+      </header>
+
+      {/* Mobile Overlay */}
+      {isMobile && sidebarOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/50 md:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
       {/* Sidebar - Force light theme */}
       <aside
         className={cn(
-          "fixed left-0 top-0 z-40 h-screen bg-[#f8fafc] border-r border-[#e2e8f0] transition-all duration-300",
-          sidebarOpen ? "w-64" : "w-16"
+          "fixed left-0 top-0 z-50 h-screen bg-[#f8fafc] border-r border-[#e2e8f0] transition-all duration-300",
+          isMobile
+            ? sidebarOpen ? "translate-x-0 w-64" : "-translate-x-full w-64"
+            : sidebarOpen ? "w-64" : "w-16"
         )}
       >
         {/* Logo */}
@@ -171,6 +218,7 @@ export default function ProtectedLayout({
                   ) : (
                     <Link
                       href={item.href}
+                      onClick={() => isMobile && setSidebarOpen(false)}
                       className={cn(
                         "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors",
                         isActive
@@ -264,9 +312,9 @@ export default function ProtectedLayout({
       {/* Main Content */}
       <main className={cn(
         "min-h-screen transition-all duration-300",
-        sidebarOpen ? "ml-64" : "ml-16"
+        isMobile ? "ml-0 pt-14" : sidebarOpen ? "ml-64" : "ml-16"
       )}>
-        <div className="p-6">
+        <div className="p-4 md:p-6">
           {children}
         </div>
       </main>

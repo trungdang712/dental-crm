@@ -307,16 +307,16 @@ export default function DashboardPage() {
   return (
     <div className="space-y-6">
       {/* Page Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Tổng quan</h1>
-          <p className="text-muted-foreground">
+          <h1 className="text-xl sm:text-2xl font-bold text-foreground">Tổng quan</h1>
+          <p className="text-sm sm:text-base text-muted-foreground">
             Xin chào! Đây là tình hình CRM của bạn hôm nay.
           </p>
         </div>
         <Button
           onClick={() => setIsAddLeadModalOpen(true)}
-          className="bg-red-600 hover:bg-red-700 text-white"
+          className="bg-red-600 hover:bg-red-700 text-white w-full sm:w-auto"
         >
           <UserPlus className="w-4 h-4 mr-2" />
           Thêm Lead
