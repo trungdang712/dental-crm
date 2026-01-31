@@ -72,6 +72,7 @@ import { formatCurrencyCompact } from '@/lib/format'
 
 const ITEM_TYPE = 'LEAD_CARD'
 
+// Pipeline columns - all 9 statuses
 const statusColumns: { status: LeadStatus; label: string; color: string }[] = [
   { status: 'new', label: 'Mới', color: '#2563eb' },
   { status: 'contacted', label: 'Đã Liên Hệ', color: '#7c3aed' },
