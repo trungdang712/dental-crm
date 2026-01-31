@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -43,13 +42,19 @@ import {
 
 type FilterStatus = 'all' | 'new' | 'contacted' | 'qualified' | 'quoted' | 'negotiating' | 'won' | 'lost'
 type FilterPriority = 'all' | 'hot' | 'warm' | 'cold'
-type FilterSource = 'all' | 'facebook' | 'google' | 'referral' | 'walk_in' | 'website' | 'other'
+type FilterSource = 'all' | 'facebook' | 'instagram' | 'google' | 'whatsapp' | 'zalo' | 'medical_tourism' | 'referral' | 'direct' | 'other'
+
+interface UserInfo {
+  id: string
+  email: string
+  name?: string
+}
 
 export default function CustomersPage() {
   const router = useRouter()
-  const supabase = createClient()
 
   const [leads, setLeads] = useState<Lead[]>([])
+  const [users, setUsers] = useState<Map<string, UserInfo>>(new Map())
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
   const [filterStatus, setFilterStatus] = useState<FilterStatus>('all')
@@ -59,22 +64,75 @@ export default function CustomersPage() {
   const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = 10
 
-  // Fetch leads
+  // Fetch leads and users
   useEffect(() => {
     fetchLeads()
+    fetchUsers()
   }, [])
+
+  const fetchUsers = async () => {
+    try {
+      const response = await fetch('/api/users')
+      if (response.ok) {
+        const data = await response.json()
+        const userMap = new Map<string, UserInfo>()
+        data.forEach((user: UserInfo) => {
+          userMap.set(user.id, user)
+        })
+        setUsers(userMap)
+      }
+    } catch (error) {
+      console.error('Error fetching users:', error)
+    }
+  }
+
+  const getUserName = (userId: string | null | undefined): string => {
+    if (!userId) return '-'
+    const user = users.get(userId)
+    if (user) {
+      return user.name || user.email?.split('@')[0] || userId.slice(0, 8)
+    }
+    return userId.slice(0, 8)
+  }
 
   const fetchLeads = async () => {
     setLoading(true)
-    const { data, error } = await supabase
-      .from('leads')
-      .select('*')
-      .order('created_at', { ascending: false })
 
-    if (!error && data) {
-      setLeads(data)
+    try {
+      // Fetch all leads using API (with pagination)
+      let allLeads: Lead[] = []
+      let page = 1
+      const pageSize = 1000
+
+      while (true) {
+        const response = await fetch(`/api/leads?page=${page}&pageSize=${pageSize}`)
+        const result = await response.json()
+
+        if (!response.ok) {
+          console.error('Error fetching leads:', result.error)
+          break
+        }
+
+        if (!result.data || result.data.length === 0) {
+          if (page === 1) {
+            console.log('No leads found in database')
+          }
+          break
+        }
+
+        allLeads = [...allLeads, ...result.data]
+
+        if (page >= result.totalPages) break
+        page++
+      }
+
+      console.log(`Fetched ${allLeads.length} leads total`)
+      setLeads(allLeads)
+    } catch (error) {
+      console.error('Error in fetchLeads:', error)
+    } finally {
+      setLoading(false)
     }
-    setLoading(false)
   }
 
   // Filter leads
@@ -129,10 +187,13 @@ export default function CustomersPage() {
   const getSourceLabel = (source: string) => {
     const labels: Record<string, string> = {
       facebook: 'Facebook',
+      instagram: 'Instagram',
       google: 'Google',
+      whatsapp: 'WhatsApp',
+      zalo: 'Zalo',
+      medical_tourism: 'Medical Tourism',
       referral: 'Giới Thiệu',
-      walk_in: 'Vãng Lai',
-      website: 'Website',
+      direct: 'Trực Tiếp',
       other: 'Khác',
     }
     return labels[source] || source
@@ -285,11 +346,15 @@ export default function CustomersPage() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Tất Cả Nguồn</SelectItem>
+              <SelectItem value="whatsapp">WhatsApp</SelectItem>
               <SelectItem value="facebook">Facebook</SelectItem>
               <SelectItem value="google">Google</SelectItem>
+              <SelectItem value="medical_tourism">Medical Tourism</SelectItem>
+              <SelectItem value="instagram">Instagram</SelectItem>
+              <SelectItem value="zalo">Zalo</SelectItem>
+              <SelectItem value="direct">Trực Tiếp</SelectItem>
               <SelectItem value="referral">Giới Thiệu</SelectItem>
-              <SelectItem value="walk_in">Vãng Lai</SelectItem>
-              <SelectItem value="website">Website</SelectItem>
+              <SelectItem value="other">Khác</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -346,7 +411,7 @@ export default function CustomersPage() {
                     <div className="space-y-1">
                       <div className="flex items-center gap-2 text-sm">
                         <Phone className="w-3 h-3 text-muted-foreground" />
-                        <span>{lead.phone || '-'}</span>
+                        <span>{lead.phone?.startsWith('NO_PHONE_') ? '-' : (lead.phone || '-')}</span>
                       </div>
                       <div className="flex items-center gap-2 text-sm text-muted-foreground">
                         <Mail className="w-3 h-3" />
@@ -375,10 +440,10 @@ export default function CustomersPage() {
                     <div className="flex items-center gap-2">
                       <Avatar className="w-6 h-6">
                         <AvatarFallback className="text-xs bg-primary/10 text-primary">
-                          {lead.assigned_to ? lead.assigned_to.slice(0, 2).toUpperCase() : 'NA'}
+                          {lead.assigned_to ? getUserName(lead.assigned_to).slice(0, 2).toUpperCase() : 'NA'}
                         </AvatarFallback>
                       </Avatar>
-                      <span className="text-sm">{lead.assigned_to || '-'}</span>
+                      <span className="text-sm">{getUserName(lead.assigned_to)}</span>
                     </div>
                   </TableCell>
 
