@@ -16,34 +16,12 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Try to fetch with joins first, fall back to simple query if it fails
-    let data, error
-
-    const result = await supabase
+    // Fetch lead without joins (users table relationship not set up)
+    const { data, error } = await supabase
       .from('crm_leads')
-      .select(`
-        *,
-        assigned_user:users!crm_leads_assigned_to_fkey(id, name, email),
-        creator:users!crm_leads_created_by_fkey(id, name, email)
-      `)
+      .select('*')
       .eq('id', id)
       .single()
-
-    data = result.data
-    error = result.error
-
-    // If join fails, try without joins
-    if (error && error.message?.includes('foreign key')) {
-      console.log('Foreign key join failed, fetching without joins')
-      const simpleResult = await supabase
-        .from('crm_leads')
-        .select('*')
-        .eq('id', id)
-        .single()
-
-      data = simpleResult.data
-      error = simpleResult.error
-    }
 
     if (error) {
       if (error.code === 'PGRST116') {
@@ -88,11 +66,7 @@ export async function PUT(
       .from('crm_leads')
       .update(body)
       .eq('id', id)
-      .select(`
-        *,
-        assigned_user:users!crm_leads_assigned_to_fkey(id, name, email),
-        creator:users!crm_leads_created_by_fkey(id, name, email)
-      `)
+      .select('*')
       .single()
 
     if (error) {
