@@ -16,7 +16,10 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { data, error } = await supabase
+    // Try to fetch with joins first, fall back to simple query if it fails
+    let data, error
+
+    const result = await supabase
       .from('crm_leads')
       .select(`
         *,
@@ -25,6 +28,22 @@ export async function GET(
       `)
       .eq('id', id)
       .single()
+
+    data = result.data
+    error = result.error
+
+    // If join fails, try without joins
+    if (error && error.message?.includes('foreign key')) {
+      console.log('Foreign key join failed, fetching without joins')
+      const simpleResult = await supabase
+        .from('crm_leads')
+        .select('*')
+        .eq('id', id)
+        .single()
+
+      data = simpleResult.data
+      error = simpleResult.error
+    }
 
     if (error) {
       if (error.code === 'PGRST116') {

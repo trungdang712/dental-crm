@@ -142,13 +142,15 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
         setLead(result.data)
         setEditFormData(result.data)
       } else {
-        toast.error('Không thể tải thông tin lead')
-        router.push('/leads')
+        console.error('API error:', response.status, result)
+        toast.error(result.error || 'Không thể tải thông tin lead')
+        // Don't redirect immediately, let user see the error
+        setTimeout(() => router.push('/leads'), 2000)
       }
     } catch (error) {
       console.error('Error fetching lead:', error)
-      toast.error('Đã xảy ra lỗi')
-      router.push('/leads')
+      toast.error('Đã xảy ra lỗi kết nối')
+      setTimeout(() => router.push('/leads'), 2000)
     } finally {
       setLoading(false)
     }
