@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useEffect, useState, useCallback, useMemo } from 'react'
+import { useRouter } from 'next/navigation'
 import { DndProvider, useDrag, useDrop } from 'react-dnd'
 import { HTML5Backend } from 'react-dnd-html5-backend'
 import { createClient } from '@/lib/supabase/client'
@@ -77,8 +78,10 @@ const statusColumns: { status: LeadStatus; label: string; color: string }[] = [
   { status: 'qualified', label: 'Đủ Điều Kiện', color: '#0891b2' },
   { status: 'quoted', label: 'Đã Báo Giá', color: '#d97706' },
   { status: 'negotiating', label: 'Đàm Phán', color: '#ea580c' },
+  { status: 'scheduled', label: 'Đã Đặt Lịch', color: '#8b5cf6' },
   { status: 'won', label: 'Thành Công', color: '#059669' },
-  { status: 'lost', label: 'Thất Bại', color: '#4b5563' },
+  { status: 'cold', label: 'Cold Lead', color: '#6b7280' },
+  { status: 'lost', label: 'Thất Bại', color: '#dc2626' },
 ]
 
 interface LeadCardProps {
@@ -419,6 +422,7 @@ function PipelineColumn({ status, label, color, leads, onDrop, onLeadClick, onCo
 }
 
 export default function LeadsPage() {
+  const router = useRouter()
   const [leads, setLeads] = useState<Lead[]>([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
@@ -490,14 +494,31 @@ export default function LeadsPage() {
 
   const fetchLeads = useCallback(async () => {
     try {
-      const response = await fetch(`/api/leads?search=${encodeURIComponent(searchQuery)}`)
-      const result = await response.json()
+      // Fetch all leads with pagination
+      let allLeads: Lead[] = []
+      let page = 1
+      const pageSize = 1000
 
-      if (response.ok) {
-        setLeads(result.data)
-      } else {
-        toast.error('Không thể tải danh sách lead')
+      while (true) {
+        const response = await fetch(
+          `/api/leads?search=${encodeURIComponent(searchQuery)}&page=${page}&pageSize=${pageSize}`
+        )
+        const result = await response.json()
+
+        if (!response.ok) {
+          toast.error('Không thể tải danh sách lead')
+          break
+        }
+
+        allLeads = [...allLeads, ...(result.data || [])]
+
+        if (!result.data || result.data.length < pageSize || page >= result.totalPages) {
+          break
+        }
+        page++
       }
+
+      setLeads(allLeads)
     } catch (error) {
       console.error('Error fetching leads:', error)
       toast.error('Đã xảy ra lỗi khi tải danh sách lead')
@@ -1132,7 +1153,7 @@ export default function LeadsPage() {
                     color={column.color}
                     leads={columnLeads}
                     onDrop={handleStatusChange}
-                    onLeadClick={(lead) => setSelectedLead(lead)}
+                    onLeadClick={(lead) => router.push(`/leads/${lead.id}`)}
                     onCollapse={isCollapsible ? () => setExpandedColumns(prev => {
                       const next = new Set(prev)
                       next.delete(column.status)
@@ -1213,7 +1234,7 @@ export default function LeadsPage() {
                           onCheckedChange={() => toggleLeadSelection(lead.id)}
                         />
                       </td>
-                      <td className="px-4 py-4" onClick={() => setSelectedLead(lead)}>
+                      <td className="px-4 py-4" onClick={() => router.push(`/leads/${lead.id}`)}>
                         <div className="flex items-center gap-3">
                           <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
                             <span className="text-primary text-sm font-semibold">
@@ -1247,7 +1268,7 @@ export default function LeadsPage() {
                           </div>
                         </div>
                       </td>
-                      <td className="px-4 py-4" onClick={() => setSelectedLead(lead)}>
+                      <td className="px-4 py-4" onClick={() => router.push(`/leads/${lead.id}`)}>
                         <Badge variant="outline" className="text-xs">
                           {lead.source === 'facebook' ? 'Facebook' :
                            lead.source === 'google' ? 'Google' :
@@ -1257,8 +1278,8 @@ export default function LeadsPage() {
                            lead.source || '-'}
                         </Badge>
                       </td>
-                      <td className="px-4 py-4" onClick={() => setSelectedLead(lead)}>{getStatusBadge(lead.status)}</td>
-                      <td className="px-4 py-4" onClick={() => setSelectedLead(lead)}>
+                      <td className="px-4 py-4" onClick={() => router.push(`/leads/${lead.id}`)}>{getStatusBadge(lead.status)}</td>
+                      <td className="px-4 py-4" onClick={() => router.push(`/leads/${lead.id}`)}>
                         {lead.assigned_user ? (
                           <div className="flex items-center gap-2">
                             <div className="w-6 h-6 rounded-full bg-muted flex items-center justify-center">
@@ -1274,19 +1295,19 @@ export default function LeadsPage() {
                           <span className="text-muted-foreground">-</span>
                         )}
                       </td>
-                      <td className="px-4 py-4 text-muted-foreground" onClick={() => setSelectedLead(lead)}>
+                      <td className="px-4 py-4 text-muted-foreground" onClick={() => router.push(`/leads/${lead.id}`)}>
                         {lead.last_contact
                           ? format(new Date(lead.last_contact), 'dd/MM/yyyy', { locale: vi })
                           : '-'}
                       </td>
-                      <td className="px-4 py-4" onClick={() => setSelectedLead(lead)}>
+                      <td className="px-4 py-4" onClick={() => router.push(`/leads/${lead.id}`)}>
                         <span className="font-semibold">
                           {lead.estimated_value
                             ? formatCurrencyCompact(lead.estimated_value)
                             : '-'}
                         </span>
                       </td>
-                      <td className="px-4 py-4 text-muted-foreground" onClick={() => setSelectedLead(lead)}>
+                      <td className="px-4 py-4 text-muted-foreground" onClick={() => router.push(`/leads/${lead.id}`)}>
                         {lead.next_follow_up
                           ? format(new Date(lead.next_follow_up), 'dd/MM/yyyy', { locale: vi })
                           : '-'}
@@ -1306,7 +1327,7 @@ export default function LeadsPage() {
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                              <DropdownMenuItem onClick={() => setSelectedLead(lead)}>
+                              <DropdownMenuItem onClick={() => router.push(`/leads/${lead.id}`)}>
                                 Xem chi tiết
                               </DropdownMenuItem>
                               <DropdownMenuItem onClick={() => openEditModal(lead)}>
